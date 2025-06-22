@@ -128,14 +128,24 @@ export async function POST(request: NextRequest) {
   let jobId: string | null = null
 
   try {
+    console.log("[D-ID Manual] ===== NEW REQUEST RECEIVED =====")
+    console.log("[D-ID Manual] Timestamp:", new Date().toISOString())
+    console.log("[D-ID Manual] Headers:", Object.fromEntries(request.headers.entries()))
+    
     const { jobId: requestJobId, script } = await request.json()
     jobId = requestJobId
 
+    console.log("[D-ID Manual] Job ID:", jobId)
+    console.log("[D-ID Manual] Script length:", script?.length || 0)
+    console.log("[D-ID Manual] Script preview:", script?.substring(0, 50) + "...")
+
     if (!jobId) {
+      console.error("[D-ID Manual] ERROR: No job ID provided")
       return NextResponse.json({ error: "Job ID is required" }, { status: 400 })
     }
 
     if (!script || !script.trim()) {
+      console.error("[D-ID Manual] ERROR: No script provided")
       return NextResponse.json({ error: "Script is required" }, { status: 400 })
     }
 
@@ -153,13 +163,24 @@ export async function POST(request: NextRequest) {
     await logStep(jobId, "REQUEST_START", { jobId, userId: user.id, scriptLength: script.length })
 
     // Get job details and verify ownership
+    console.log("[D-ID Manual] Fetching job from Supabase...")
     const { data: job, error: jobError } = await supabase
       .from("jobs")
       .select("*")
       .eq("id", jobId)
       .single()
 
+    console.log("[D-ID Manual] Job fetch result:", {
+      found: !!job,
+      error: jobError?.message,
+      jobId: job?.id,
+      userId: job?.user_id,
+      existingDidUrl: job?.did_video_url,
+      createdAt: job?.created_at
+    })
+
     if (jobError || !job) {
+      console.error("[D-ID Manual] ERROR: Job not found in database")
       throw new Error(`Job not found: ${jobError?.message || "No job data"}`)
     }
 
@@ -180,10 +201,15 @@ export async function POST(request: NextRequest) {
     })
 
     // Test D-ID connection first
+    console.log("[D-ID Manual] Testing D-ID connection...")
     const connectionTest = await didService.testConnection()
+    console.log("[D-ID Manual] D-ID connection test result:", connectionTest)
     await logStep(jobId, "CONNECTION_TEST", { connected: connectionTest })
 
     if (!connectionTest) {
+      console.error("[D-ID Manual] ERROR: D-ID connection test failed")
+      console.error("[D-ID Manual] API Key present:", !!process.env.DID_API_KEY)
+      console.error("[D-ID Manual] API Key format:", process.env.DID_API_KEY?.includes(":") ? "Correct (contains colon)" : "Invalid")
       throw new Error("D-ID API connection test failed - check API key and network connectivity")
     }
 
@@ -193,6 +219,14 @@ export async function POST(request: NextRequest) {
 
     // Create D-ID video with the edited script
     try {
+      console.log("[D-ID Manual] Creating D-ID talk with params:", {
+        imageUrl: job.image_url,
+        scriptLength: script.length,
+        voice: voiceConfig.voice,
+        voiceStyle: voiceConfig.style,
+        useDefaultPresenter: true
+      })
+
       const didResponse = await didService.createTalkFromScript(job.image_url, script, {
         voice: voiceConfig.voice as any,
         voiceStyle: voiceConfig.style as any,
@@ -206,6 +240,13 @@ export async function POST(request: NextRequest) {
         ],
       })
 
+      console.log("[D-ID Manual] D-ID talk created successfully:", {
+        talkId: didResponse.id,
+        status: didResponse.status,
+        createdAt: didResponse.created_at,
+        createdBy: didResponse.created_by
+      })
+
       await logStep(jobId, "TALK_CREATED", {
         talkId: didResponse.id,
         status: didResponse.status,
@@ -214,13 +255,21 @@ export async function POST(request: NextRequest) {
       })
 
       // Update job with pending status and save the edited script
-      await supabase
+      console.log("[D-ID Manual] Updating job in Supabase with talk ID:", didResponse.id)
+      const { error: updateError } = await supabase
         .from("jobs")
         .update({ 
           did_video_url: `pending:${didResponse.id}`,
           openai_avatar_script: script // Save the edited script
         })
         .eq("id", jobId)
+      
+      if (updateError) {
+        console.error("[D-ID Manual] ERROR updating job:", updateError)
+        throw updateError
+      }
+      
+      console.log("[D-ID Manual] Job updated successfully with pending talk ID")
 
       await logStep(jobId, "JOB_UPDATED", { 
         status: "pending", 
@@ -228,13 +277,18 @@ export async function POST(request: NextRequest) {
         script_updated: true 
       })
 
-      return NextResponse.json({
+      const response = {
         success: true,
         didData: didResponse,
         talkId: didResponse.id,
         status: didResponse.status,
         message: "Avatar video generation started with your edited script"
-      })
+      }
+      
+      console.log("[D-ID Manual] ===== REQUEST COMPLETED SUCCESSFULLY =====")
+      console.log("[D-ID Manual] Response:", response)
+      
+      return NextResponse.json(response)
     } catch (primaryError) {
       await logStep(jobId, "PRIMARY_ATTEMPT_FAILED", {
         error: primaryError.message,
