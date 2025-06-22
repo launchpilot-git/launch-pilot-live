@@ -23,7 +23,7 @@ try {
 
 // Extract talk ID from D-ID URL
 function extractTalkId(url: string): string | null {
-  const match = url.match(/\/tlk_([^\/]+)\//)
+  const match = url.match(/\/(tlk_[^\/]+)\//)
   return match ? match[1] : null
 }
 
@@ -94,8 +94,7 @@ export async function GET(request: NextRequest) {
             const { error: updateError } = await supabase
               .from("jobs")
               .update({ 
-                did_video_url: "expired:video_not_found",
-                updated_at: new Date().toISOString()
+                did_video_url: "expired:video_not_found"
               })
               .eq("id", jobId)
               

@@ -390,7 +390,7 @@ export default function ResultsPage() {
                                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-t-[#ffde00] absolute inset-0"></div>
                               </div>
                             </div>
-                            <h4 className="text-lg font-medium text-gray-900 mb-2">Processing Avatar Video</h4>
+                            <h4 className="text-lg font-medium text-gray-900 mb-2">Creating Your AI Avatar Video</h4>
                             <p className="text-sm text-gray-600 mb-1">This usually takes 1-3 minutes</p>
                             <p className="text-xs text-gray-500">Your AI presenter is being created...</p>
                             <VideoStatusPoller jobId={jobId} onUpdate={handleVideoUpdate} />
@@ -424,7 +424,7 @@ export default function ResultsPage() {
                               </div>
                             </div>
                             <h4 className="text-lg font-medium text-gray-900 mb-2">Loading Avatar Video</h4>
-                            <p className="text-sm text-gray-600">Preparing your video...</p>
+                            <p className="text-sm text-gray-600">Preparing your AI presenter...</p>
                           </div>
                         </div>
                       ) : (

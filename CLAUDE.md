@@ -6,7 +6,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Current Production URL**: [https://launch-pilot-live.vercel.app/](https://launch-pilot-live.vercel.app/)
 
+**GitHub Repository**: [https://github.com/launchpilot-git/launch-pilot-live](https://github.com/launchpilot-git/launch-pilot-live)
+
 *Note: This is the current production URL until a custom domain is added.*
+
+### Git Workflow
+**ALWAYS push to the GitHub repository using standard git commands:**
+```bash
+git add .
+git commit -m "your commit message"
+git push origin main
+```
+Vercel automatically deploys from the main branch of this GitHub repository.
 
 ## Development Commands
 
