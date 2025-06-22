@@ -354,8 +354,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setGenerationsUsed(0)
       setError(null)
       
-      // Redirect to login page
-      window.location.href = '/login'
+      // Redirect to homepage
+      window.location.href = '/'
     } catch (error) {
       console.error('Error signing out:', error)
       setError('Failed to sign out. Please try again.')
