@@ -109,6 +109,7 @@ export function Navbar({ isPro = false, hasProjects = false }: { isPro?: boolean
   const { user, loading, signOut, plan } = useAuth()
   const pathname = usePathname()
   const isDashboard = pathname.startsWith('/dashboard') || pathname.startsWith('/generate')
+  const isHomepage = pathname === '/'
   
   return (
     <header className="bg-white/80 backdrop-blur-xl rounded-xl py-3 px-3 sm:px-6 flex items-center justify-between mb-4 border border-white/15 shadow-[0px_10px_40px_rgba(0,0,0,0.08)]">
@@ -144,16 +145,17 @@ export function Navbar({ isPro = false, hasProjects = false }: { isPro?: boolean
               </>
             ) : (
               <>
+                {/* Show Dashboard button when not on dashboard or when on homepage */}
                 <Link
                   href="/dashboard"
-                  className="text-[#2c0e31] border border-[#2c0e31] rounded-full px-4 py-1.5 text-sm font-medium hover:bg-[#2c0e31] hover:text-white transition-all duration-200"
+                  className="text-[#2c0e31] border border-[#2c0e31] rounded-full px-3 sm:px-4 py-1.5 text-sm font-medium hover:bg-[#2c0e31] hover:text-white transition-all duration-200"
                 >
                   Dashboard
                 </Link>
                 {plan === 'pro' && (
-                  <div className="bg-[#f4c537] text-[#2c0e31] rounded-full px-4 py-1.5 text-xs font-bold uppercase shadow-sm flex items-center gap-1.5">
+                  <div className="bg-[#f4c537] text-[#2c0e31] rounded-full px-3 sm:px-4 py-1.5 text-xs font-bold uppercase shadow-sm flex items-center gap-1 sm:gap-1.5">
                     <Sparkles className="w-3 h-3 fill-current" />
-                    PRO
+                    <span className="hidden sm:inline">PRO</span>
                   </div>
                 )}
                 <UserMenu user={user} signOut={signOut} />
