@@ -97,28 +97,43 @@ export async function pollPendingDIDVideos(options?: { maxRetries?: number; time
           };
         }
         
-        // Handle promo videos first (these should be failed if still pending)
+        // Handle promo videos - only mark as stuck if job is old enough
+        // Runway videos process synchronously but might take a few minutes
         if (hasPendingPromo && !hasPendingDID) {
-          console.log(`Job ${jobId} has stuck promo video, setting to failed state`);
-          
-          await supabase
-            .from("jobs")
-            .update({
-              promo_video_url: "failed:stuck",
-            })
-            .eq("id", jobId);
-          
-          await logStep(jobId, "PROMO_VIDEO_STUCK", {
-            previousUrl: job.promo_video_url,
-            reason: "Promo video stuck in pending state",
-          });
-          
-          return {
-            jobId,
-            status: "failed",
-            type: "promo",
-            error: "Promo video generation stuck",
-          };
+          // Only mark as stuck if job is older than 5 minutes
+          // (Runway processing should complete within this time)
+          const fiveMinutes = 5 * 60 * 1000;
+          if (jobAge > fiveMinutes) {
+            console.log(`Job ${jobId} has stuck promo video (age: ${Math.round(jobAge/1000)}s), setting to failed state`);
+            
+            await supabase
+              .from("jobs")
+              .update({
+                promo_video_url: "failed:stuck",
+                promo_video_error: "Video generation took too long. Please try again with a different image."
+              })
+              .eq("id", jobId);
+            
+            await logStep(jobId, "PROMO_VIDEO_STUCK", {
+              previousUrl: job.promo_video_url,
+              reason: "Promo video stuck in pending state",
+              jobAge: Math.round(jobAge / 1000),
+            });
+            
+            return {
+              jobId,
+              status: "failed",
+              type: "promo",
+              error: "Promo video generation stuck",
+            };
+          } else {
+            console.log(`Job ${jobId} has pending promo video but is still young (${Math.round(jobAge/1000)}s), skipping...`);
+            return {
+              jobId,
+              status: "still_processing",
+              type: "promo",
+            };
+          }
         }
         
         // Handle DID videos (only if they have pending DID)
