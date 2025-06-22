@@ -500,56 +500,27 @@ export async function POST(request: NextRequest) {
       caption: `Analyze this product image and write a short social media caption (under 220 characters) using this brand style: ${job.brand_style}, for a business in the ${job.industry} industry. Make it engaging and include relevant hashtags.`,
       email: `Analyze this product image and write a 100–150 word marketing email to help ${job.business_name} (in the ${job.industry} industry) promote this product. Use a ${job.brand_style} tone. This is for a customer newsletter. Include a compelling subject line.`,
       avatarScript: `Analyze this product image and write a 2–3 sentence script for a talking avatar who is introducing this product directly to camera. Keep it conversational, confident, and aligned with the ${job.brand_style} tone. The business is called ${job.business_name}. Focus on the key benefits visible in the image.`,
-      cinematicScript: `You are creating a prompt for Runway Gen-4 Turbo video generation. Analyze this product image and generate a Runway-optimized prompt.
+      cinematicScript: `Create a simple Runway video prompt for this product. Output ONLY the prompt, nothing else.
 
-CRITICAL ANALYSIS PHASE:
-First, analyze the image to determine:
-1. Product category (beauty/tech/fashion/food/automotive/home/other)
-2. Background complexity (simple/complex)
-3. Lighting conditions
-4. Overall composition
+Brand style: ${job.brand_style}
 
-ENHANCED PROMPT TEMPLATE:
-{SUBJECT}, {ENHANCED_MOTION}, {ENVIRONMENT}, {LIGHTING} --length 5s --no text watermark blurry distorted duplicate mutation deformed low quality artifacts grain pixelated
+Use this exact format:
+[product name], [camera movement], soft lighting
 
-ASSEMBLY GUIDELINES:
+Camera movements by brand style:
+- bold → "dramatic zoom in"
+- witty → "playful pan left to right"  
+- casual → "gentle drift forward"
+- elegant → "smooth arc around product"
+- uplifting → "slow rise upward"
+- fun → "energetic spin around"
+- empowering → "confident push forward"
+- minimalist → "subtle zoom out"
+- professional → "steady pan right"
+- luxury → "graceful orbit"
+- playful → "bouncy zoom in and out"
 
-1. SUBJECT: Extract core product in 6 words or less (e.g., "crystal perfume bottle", "sleek wireless headphones")
-
-2. ENHANCED MOTION: Use brand tone mapping for "${job.brand_style}":
-   - bold → "dramatic push-in with slight upward tilt"
-   - witty → "playful bounce-in with gentle left pan"
-   - casual → "handheld drift-right with natural sway"
-   - elegant → "smooth arc-right with gradual pullback"
-   - uplifting → "ascending dolly-in with brightening exposure"
-   - fun → "energetic pan-left with slight zoom pulse"
-   - empowering → "steady rise-up with confident forward push"
-   - minimalist → "zen-like slow zoom with static frame"
-
-3. PRODUCT CATEGORY OVERRIDE (if applicable):
-   - beauty → "luxurious reveal with soft glow"
-   - tech → "precision engineering showcase with clean lines"
-   - fashion → "elegant fabric flow with natural lighting"
-   - food → "appetizing close-up with warm ambient light"
-   - automotive → "dynamic reveal with dramatic shadows"
-   - home → "cozy lifestyle pan with inviting warmth"
-
-4. ENVIRONMENT: Add only if background is simple (e.g., "marble surface", "clean studio")
-
-5. LIGHTING: Choose based on image analysis: "soft studio lighting", "natural light", "dramatic lighting"
-
-6. DURATION: Always use 5s for products (optimal quality)
-
-7. NEGATIVE PROMPTS: Always end with full negative prompt list
-
-VALIDATION RULES:
-- Keep total prompt under 75 characters (excluding negative prompts)
-- Never combine conflicting movements
-- Always include motion speed modifier (smooth, gentle, deliberate)
-- Avoid: fast, rapid, sudden (cause jitter)
-
-Output ONLY the final prompt string. Example:
-crystal perfume bottle, smooth arc-right with gradual pullback, marble surface, soft studio lighting --length 5s --no text watermark blurry distorted duplicate mutation deformed low quality artifacts grain pixelated`,
+Keep it under 50 words. Focus on smooth, cinematic motion.`,
     }
 
     await logStep(jobId, "PROMPTS_GENERATED", prompts)
