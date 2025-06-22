@@ -108,53 +108,44 @@ async function checkUserAuth(request: NextRequest) {
   }
 }
 
-// Presenter and voice configuration based on brand style
+// Voice configuration based on brand style (using default presenter for current plan)
 function getPresenterConfig(brandStyle: string) {
-  const presenterConfigs = {
+  const voiceConfigs = {
     professional: {
-      presenter: "mary-26F6sVe7Yg",  // Mature, professional female
       voice: "en-US-AriaNeural",
       style: "Friendly"
     },
     elegant: {
-      presenter: "sophia-utD_M2P2Lk",  // Sophisticated female
       voice: "en-US-AriaNeural", 
       style: "Hopeful"
     },
     bold: {
-      presenter: "jack-Pt27VkP3hW",  // Confident male
-      voice: "en-US-GuyNeural",  // Male voice to match presenter
+      voice: "en-US-JennyNeural",  // Use female voice for consistency
       style: "Excited"
     },
     playful: {
-      presenter: "lily-ADdf3C9AUh",  // Energetic female
       voice: "en-US-JennyNeural",
       style: "Cheerful"
     },
     luxury: {
-      presenter: "diana-tfTP6K9S9u",  // Upscale female
       voice: "en-US-AriaNeural",
       style: "Hopeful"
     },
     minimal: {
-      presenter: "matt-g7muIj5CiD",  // Clean-cut male
-      voice: "en-US-BrianNeural",  // Male voice to match presenter
+      voice: "en-US-AriaNeural",
       style: "Friendly"
     },
     casual: {
-      presenter: "dylan-O22mVF9zIM",  // Relaxed male
-      voice: "en-US-GuyNeural",  // Male voice to match presenter
+      voice: "en-US-JennyNeural",
       style: "Cheerful"
     },
     witty: {
-      presenter: "jaimie-mhQav1eFuW",  // Charismatic female
       voice: "en-US-JennyNeural",
       style: "Excited"
     }
   }
   
-  return presenterConfigs[brandStyle.toLowerCase()] || {
-    presenter: "ella-gnVGWQ_kNS",  // Default female presenter
+  return voiceConfigs[brandStyle.toLowerCase()] || {
     voice: "en-US-JennyNeural",
     style: "Cheerful"
   }
@@ -249,26 +240,24 @@ export async function POST(request: NextRequest) {
       throw new Error("D-ID API connection test failed - check API key and network connectivity")
     }
 
-    // Get presenter and voice configuration based on brand style
-    const presenterConfig = getPresenterConfig(job.brand_style)
-    await logStep(jobId, "PRESENTER_AND_VOICE_SELECTED", { ...presenterConfig, brand_style: job.brand_style })
+    // Get voice configuration based on brand style (using default presenter)
+    const voiceConfig = getPresenterConfig(job.brand_style)
+    await logStep(jobId, "VOICE_SELECTED", { ...voiceConfig, brand_style: job.brand_style, using_default_presenter: true })
 
     // Create D-ID video with the edited script
     try {
       console.log("[D-ID Manual] Creating D-ID talk with params:", {
         imageUrl: job.image_url,
         scriptLength: script.length,
-        presenter: presenterConfig.presenter,
-        voice: presenterConfig.voice,
-        voiceStyle: presenterConfig.style,
-        useDefaultPresenter: false
+        voice: voiceConfig.voice,
+        voiceStyle: voiceConfig.style,
+        useDefaultPresenter: true  // Use default presenter for current plan
       })
 
       const didResponse = await didService.createTalkFromScript(job.image_url, script, {
-        presenter: presenterConfig.presenter,
-        voice: presenterConfig.voice as any,
-        voiceStyle: presenterConfig.style as any,
-        useDefaultPresenter: false, // Don't use default since we're specifying a presenter
+        voice: voiceConfig.voice as any,
+        voiceStyle: voiceConfig.style as any,
+        useDefaultPresenter: true, // Use default presenter compatible with current plan
         expressions: [
           {
             start_frame: 0,
@@ -327,7 +316,7 @@ export async function POST(request: NextRequest) {
       console.log("[D-ID Manual] Response:", response)
       
       return NextResponse.json(response)
-    } catch (primaryError) {
+    } catch (primaryError: any) {
       await logStep(jobId, "PRIMARY_ATTEMPT_FAILED", {
         error: primaryError.message,
         attempting_fallback: true,
@@ -366,7 +355,7 @@ export async function POST(request: NextRequest) {
           status: simpleResponse.status,
           message: "Avatar video generation started with fallback configuration"
         })
-      } catch (fallbackError) {
+      } catch (fallbackError: any) {
         await logStep(jobId, "FALLBACK_FAILED", {
           error: fallbackError.message,
           using_placeholder: true,

@@ -53,7 +53,9 @@ export async function middleware(request: NextRequest) {
     path: request.nextUrl.pathname,
     hasUser: !!user,
     userId: user?.id,
-    isProtectedRoute
+    isProtectedRoute,
+    exactPath: request.nextUrl.pathname === '/runway-sandbox',
+    startsWithCheck: request.nextUrl.pathname.startsWith('/runway-sandbox')
   })
 
   if (!user && isProtectedRoute) {
