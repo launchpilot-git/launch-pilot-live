@@ -126,27 +126,34 @@ export async function GET(request: NextRequest) {
           }
         }
 
-      // Try fetching the video with the new URL
-      const newResponse = await fetch(newUrl)
-      if (!newResponse.ok) {
+        // Try fetching the video with the new URL
+        const newResponse = await fetch(newUrl)
+        if (!newResponse.ok) {
+          return NextResponse.json(
+            { error: `Failed to fetch refreshed video: ${newResponse.statusText}` },
+            { status: newResponse.status }
+          )
+        }
+
+        // Get the video data as an array buffer
+        const videoData = await newResponse.arrayBuffer()
+
+        // Create a new response with the video data and appropriate headers
+        return new NextResponse(videoData, {
+          headers: {
+            "Content-Type": "video/mp4",
+            "Content-Disposition": "inline",
+            "Cache-Control": "public, max-age=3600",
+            "X-Video-Refreshed": "true", // Indicate that the URL was refreshed
+          },
+        })
+      } catch (error) {
+        console.error("[Video Proxy] Error refreshing D-ID video:", error)
         return NextResponse.json(
-          { error: `Failed to fetch refreshed video: ${newResponse.statusText}` },
-          { status: newResponse.status }
+          { error: "Failed to refresh video URL", details: error instanceof Error ? error.message : "Unknown error" },
+          { status: 500 }
         )
       }
-
-      // Get the video data as an array buffer
-      const videoData = await newResponse.arrayBuffer()
-
-      // Create a new response with the video data and appropriate headers
-      return new NextResponse(videoData, {
-        headers: {
-          "Content-Type": "video/mp4",
-          "Content-Disposition": "inline",
-          "Cache-Control": "public, max-age=3600",
-          "X-Video-Refreshed": "true", // Indicate that the URL was refreshed
-        },
-      })
     }
     
     if (!response.ok) {
