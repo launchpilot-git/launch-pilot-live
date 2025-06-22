@@ -46,6 +46,7 @@ export default function ResultsPage() {
   const [error, setError] = useState<string | null>(null)
   const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [showPromoModal, setShowPromoModal] = useState(false)
+  const [isAvatarVideoReady, setIsAvatarVideoReady] = useState(false)
 
   const jobId = params.jobId as string
 
@@ -109,6 +110,8 @@ export default function ResultsPage() {
 
       if (data.user_id === user.id) {
         setJobData(data)
+        // Reset video ready state when job data changes
+        setIsAvatarVideoReady(false)
         console.log('[ResultsPage] Job data refreshed successfully')
       }
     } catch (err) {
@@ -339,6 +342,18 @@ export default function ResultsPage() {
                     <h3 className="text-lg font-medium">Avatar Video</h3>
                   </div>
                   <div className="max-w-2xl mx-auto space-y-4">
+                    {/* Hidden video element to preload and check if video is ready */}
+                    {isPro && jobData.did_video_url && !jobData.did_video_url.startsWith('pending:') && !jobData.did_video_url.startsWith('failed:') && jobData.did_video_url !== "script_ready" && !isAvatarVideoReady && (
+                      <video
+                        src={jobData.did_video_url.includes('d-id.com') || jobData.did_video_url.includes('amazonaws.com') 
+                          ? `/api/video-proxy?url=${encodeURIComponent(jobData.did_video_url)}&jobId=${jobId}`
+                          : jobData.did_video_url
+                        }
+                        onCanPlay={() => setIsAvatarVideoReady(true)}
+                        style={{ display: 'none' }}
+                        preload="auto"
+                      />
+                    )}
                     {isPro ? (
                       // Check if script is ready for editing
                       jobData.did_video_url === "script_ready" && jobData.openai_avatar_script ? (
@@ -347,13 +362,14 @@ export default function ResultsPage() {
                           jobId={jobId}
                           onVideoGenerated={handleVideoUpdate}
                         />
-                      ) : jobData.did_video_url && !jobData.did_video_url.startsWith('pending:') && !jobData.did_video_url.startsWith('failed:') && jobData.did_video_url !== "script_ready" ? (
+                      ) : jobData.did_video_url && !jobData.did_video_url.startsWith('pending:') && !jobData.did_video_url.startsWith('failed:') && jobData.did_video_url !== "script_ready" && isAvatarVideoReady ? (
                         <div className="max-w-md mx-auto space-y-4">
                           <CustomVideoPlayer 
                             src={jobData.did_video_url}
                             aspectRatio="square"
                             className="shadow-lg"
                             jobId={jobId}
+                            onReady={() => setIsAvatarVideoReady(true)}
                           />
                           <Button 
                             onClick={() => downloadVideo(jobData.did_video_url!, `${jobData.business_name}-avatar-video.mp4`)}
@@ -399,20 +415,22 @@ export default function ResultsPage() {
                         </div>
                       )
                     ) : (
-                      <button
-                        onClick={() => setShowAvatarModal(true)}
-                        className="relative h-full w-full bg-gradient-to-br from-blue-50 to-purple-50 rounded-md hover:from-blue-100 hover:to-purple-100 transition-colors cursor-pointer"
-                      >
-                        {/* Lock icon overlay */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="text-center">
-                            <div className="mb-2 flex justify-center">
-                              <Lock className="h-8 w-8 text-gray-500" />
+                      <div className="aspect-square max-w-md mx-auto">
+                        <button
+                          onClick={() => setShowAvatarModal(true)}
+                          className="relative h-full w-full bg-gradient-to-br from-blue-50 to-purple-50 rounded-md hover:from-blue-100 hover:to-purple-100 transition-colors cursor-pointer"
+                        >
+                          {/* Lock icon overlay */}
+                          <div className="absolute inset-0 flex items-center justify-center p-8">
+                            <div className="text-center">
+                              <div className="mb-3 flex justify-center">
+                                <Lock className="h-12 w-12 text-gray-500" />
+                              </div>
+                              <p className="text-base text-gray-600 font-medium">Click to learn more</p>
                             </div>
-                            <p className="text-sm text-gray-600 font-medium">Click to learn more</p>
                           </div>
-                        </div>
-                      </button>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </CardContent>
@@ -478,20 +496,22 @@ export default function ResultsPage() {
                         </div>
                       )
                     ) : (
-                      <button
-                        onClick={() => setShowPromoModal(true)}
-                        className="relative h-full w-full bg-gradient-to-br from-blue-50 to-purple-50 rounded-md hover:from-blue-100 hover:to-purple-100 transition-colors cursor-pointer"
-                      >
-                        {/* Lock icon overlay */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="text-center">
-                            <div className="mb-2 flex justify-center">
-                              <Lock className="h-8 w-8 text-gray-500" />
+                      <div className="aspect-video">
+                        <button
+                          onClick={() => setShowPromoModal(true)}
+                          className="relative h-full w-full bg-gradient-to-br from-blue-50 to-purple-50 rounded-md hover:from-blue-100 hover:to-purple-100 transition-colors cursor-pointer"
+                        >
+                          {/* Lock icon overlay */}
+                          <div className="absolute inset-0 flex items-center justify-center p-8">
+                            <div className="text-center">
+                              <div className="mb-3 flex justify-center">
+                                <Lock className="h-12 w-12 text-gray-500" />
+                              </div>
+                              <p className="text-base text-gray-600 font-medium">Click to learn more</p>
                             </div>
-                            <p className="text-sm text-gray-600 font-medium">Click to learn more</p>
                           </div>
-                        </div>
-                      </button>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </CardContent>

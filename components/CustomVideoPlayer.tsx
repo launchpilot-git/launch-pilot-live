@@ -9,6 +9,7 @@ interface CustomVideoPlayerProps {
   className?: string;
   aspectRatio?: 'video' | 'square';
   jobId?: string; // Optional job ID for D-ID URL refresh
+  onReady?: () => void; // Callback when video is ready to play
 }
 
 export default function CustomVideoPlayer({ 
@@ -16,7 +17,8 @@ export default function CustomVideoPlayer({
   poster, 
   className = '', 
   aspectRatio = 'video',
-  jobId
+  jobId,
+  onReady
 }: CustomVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -26,6 +28,7 @@ export default function CustomVideoPlayer({
   const [isBuffering, setIsBuffering] = useState(false);
   const [canPlay, setCanPlay] = useState(false);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,6 +50,31 @@ export default function CustomVideoPlayer({
   };
 
   const videoSrc = getVideoSrc(src);
+  
+  // Log video source for debugging
+  useEffect(() => {
+    console.log('[CustomVideoPlayer] Video source:', {
+      originalSrc: src,
+      proxiedSrc: videoSrc,
+      shouldUseProxy: shouldUseProxy(src),
+      jobId: jobId
+    });
+  }, [src, videoSrc, jobId]);
+
+  // Add a timeout for video loading
+  useEffect(() => {
+    if (isLoading && !error) {
+      const timeoutId = setTimeout(() => {
+        if (isLoading && !canPlay) {
+          console.error('[CustomVideoPlayer] Video loading timeout after 30 seconds');
+          setError('Video loading timeout - please refresh the page');
+          setIsLoading(false);
+        }
+      }, 30000); // 30 second timeout
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isLoading, error, canPlay]);
 
   // Extract thumbnail from video
   useEffect(() => {
@@ -105,6 +133,11 @@ export default function CustomVideoPlayer({
     setIsLoading(false);
     setCanPlay(true);
     setIsBuffering(false);
+    
+    // Notify parent that video is ready
+    if (onReady) {
+      onReady();
+    }
   };
 
   const handleWaiting = () => {
@@ -113,6 +146,40 @@ export default function CustomVideoPlayer({
 
   const handlePlaying = () => {
     setIsBuffering(false);
+  };
+
+  const handleError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    const video = e.currentTarget;
+    const error = video.error;
+    
+    console.error('[CustomVideoPlayer] Video error:', {
+      code: error?.code,
+      message: error?.message,
+      src: videoSrc,
+      networkState: video.networkState,
+      readyState: video.readyState
+    });
+    
+    let errorMessage = 'Failed to load video';
+    if (error) {
+      switch (error.code) {
+        case 1: // MEDIA_ERR_ABORTED
+          errorMessage = 'Video loading was aborted';
+          break;
+        case 2: // MEDIA_ERR_NETWORK
+          errorMessage = 'Network error while loading video';
+          break;
+        case 3: // MEDIA_ERR_DECODE
+          errorMessage = 'Video format not supported';
+          break;
+        case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+          errorMessage = 'Video source not supported';
+          break;
+      }
+    }
+    
+    setError(errorMessage);
+    setIsLoading(false);
   };
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -157,11 +224,27 @@ export default function CustomVideoPlayer({
         onCanPlay={handleCanPlay}
         onWaiting={handleWaiting}
         onPlaying={handlePlaying}
+        onError={handleError}
         preload="auto"
       />
 
+      {/* Error State */}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+          <div className="text-center max-w-xs">
+            <div className="mb-3">
+              <svg className="w-12 h-12 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-white text-sm font-medium mb-1">{error}</p>
+            <p className="text-gray-300 text-xs">Please try refreshing the page</p>
+          </div>
+        </div>
+      )}
+
       {/* Loading State */}
-      {isLoading && (
+      {isLoading && !error && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50">
           <div className="text-center">
             <div className="w-8 h-8 border-2 border-[#ffde00] border-t-transparent rounded-full animate-spin mx-auto mb-2" />

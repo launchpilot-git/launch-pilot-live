@@ -8,8 +8,18 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Initialize D-ID service
-const didService = new DIDService(process.env.DID_API_KEY!)
+// Initialize D-ID service with error handling
+let didService: DIDService | null = null
+try {
+  if (!process.env.DID_API_KEY) {
+    console.error("[Video Proxy] DID_API_KEY environment variable is not set")
+  } else {
+    didService = new DIDService(process.env.DID_API_KEY)
+    console.log("[Video Proxy] D-ID service initialized successfully")
+  }
+} catch (error) {
+  console.error("[Video Proxy] Failed to initialize D-ID service:", error)
+}
 
 // Extract talk ID from D-ID URL
 function extractTalkId(url: string): string | null {
@@ -24,32 +34,58 @@ export async function GET(request: NextRequest) {
     const videoUrl = searchParams.get("url")
     const jobId = searchParams.get("jobId") // Optional job ID for database updates
 
+    console.log("[Video Proxy] Request received:", {
+      url: videoUrl,
+      jobId: jobId,
+      timestamp: new Date().toISOString()
+    })
+
     if (!videoUrl) {
+      console.error("[Video Proxy] No video URL provided")
       return NextResponse.json({ error: "No video URL provided" }, { status: 400 })
     }
 
     // Decode the URL if it's encoded
     const decodedUrl = decodeURIComponent(videoUrl)
+    console.log("[Video Proxy] Decoded URL:", decodedUrl)
 
     // Fetch the video from the original source
+    console.log("[Video Proxy] Fetching video from original source...")
     const response = await fetch(decodedUrl)
+    console.log("[Video Proxy] Response status:", response.status, response.statusText)
     
     // Handle expired D-ID URLs (403 Forbidden)
     if (response.status === 403 && decodedUrl.includes("d-id")) {
-      console.log("D-ID video URL expired, attempting to refresh...")
+      console.log("[Video Proxy] D-ID video URL expired (403), attempting to refresh...")
       
       // Extract talk ID from the URL
       const talkId = extractTalkId(decodedUrl)
+      console.log("[Video Proxy] Extracted talk ID:", talkId)
+      
       if (!talkId) {
+        console.error("[Video Proxy] Could not extract talk ID from URL:", decodedUrl)
         return NextResponse.json(
           { error: "Could not extract talk ID from expired URL" },
           { status: 400 }
         )
       }
 
+      // Check if D-ID service is available
+      if (!didService) {
+        console.error("[Video Proxy] D-ID service is not initialized")
+        return NextResponse.json(
+          { error: "D-ID service unavailable" },
+          { status: 500 }
+        )
+      }
+
       // Refresh the video URL
+      console.log("[Video Proxy] Calling D-ID service to refresh video URL...")
       const newUrl = await didService.refreshVideoUrl(talkId)
+      console.log("[Video Proxy] D-ID refresh response:", newUrl ? "Success" : "Failed")
+      
       if (!newUrl) {
+        console.error("[Video Proxy] Failed to refresh video URL for talk ID:", talkId)
         return NextResponse.json(
           { error: "Failed to refresh video URL" },
           { status: 500 }
@@ -94,6 +130,11 @@ export async function GET(request: NextRequest) {
     }
     
     if (!response.ok) {
+      console.error("[Video Proxy] Failed to fetch video:", {
+        status: response.status,
+        statusText: response.statusText,
+        url: decodedUrl
+      })
       return NextResponse.json(
         { error: `Failed to fetch video: ${response.statusText}` },
         { status: response.status }
@@ -101,7 +142,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get the video data as an array buffer
+    console.log("[Video Proxy] Fetching video data...")
     const videoData = await response.arrayBuffer()
+    console.log("[Video Proxy] Video data size:", videoData.byteLength, "bytes")
 
     // Create a new response with the video data and appropriate headers
     return new NextResponse(videoData, {
@@ -112,9 +155,13 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("Error in video proxy:", error)
+    console.error("[Video Proxy] Error in video proxy:", error)
+    console.error("[Video Proxy] Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return NextResponse.json(
-      { error: "Failed to proxy video" },
+      { error: "Failed to proxy video", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     )
   }
