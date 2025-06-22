@@ -352,7 +352,7 @@ export function DashboardFree() {
           ) : jobs.length > 0 ? (
             <div className="mb-8">
               <h2 className="mb-4 text-xl font-semibold">Your Projects</h2>
-              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {jobs.map((job) => (
                   <Card key={job.id} className="overflow-hidden">
                     <JobImage 
@@ -401,7 +401,7 @@ export function DashboardFree() {
               <h3 className="text-lg font-medium">See what Pro unlocks</h3>
               <Badge className="ml-1 bg-primary text-primary-foreground">PRO</Badge>
             </div>
-            <div className="mb-6 grid gap-4 md:grid-cols-3">
+            <div className="mb-6 grid gap-4 grid-cols-1 md:grid-cols-3">
               <div className="group relative overflow-hidden rounded-md bg-gray-100">
                 <div className="aspect-video w-full bg-gray-200 blur-[2px] opacity-70">
                   <Image

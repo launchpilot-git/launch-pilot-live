@@ -68,18 +68,18 @@ export default function LoginPage() {
       </div>
       
       {/* Main Content - Single Column with Gradient Background */}
-      <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
-        <div className="max-w-md w-full mx-4">
-          <div className="bg-white rounded-3xl shadow-2xl p-8">
+      <div className="flex items-center justify-center min-h-[calc(100vh-100px)] px-4">
+        <div className="max-w-md w-full">
+          <div className="bg-white rounded-3xl shadow-2xl p-4 sm:p-8">
             {/* Header */}
-            <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold text-[#2c0e31]">Login</h1>
+            <div className="text-center mb-6 sm:mb-8">
+              <h1 className="text-3xl sm:text-4xl font-bold text-[#2c0e31]">Login</h1>
             </div>
 
-            <form onSubmit={handleEmailLogin} className="space-y-8">
+            <form onSubmit={handleEmailLogin} className="space-y-4 sm:space-y-6">
               {/* Email Field */}
               <div>
-                <label className="block text-gray-700 text-lg font-medium mb-3">
+                <label className="block text-gray-700 text-base sm:text-lg font-medium mb-2 sm:mb-3">
                   Email
                 </label>
                 <div>
@@ -95,7 +95,7 @@ export default function LoginPage() {
 
               {/* Password Field */}
               <div>
-                <label className="block text-gray-700 text-lg font-medium mb-3">
+                <label className="block text-gray-700 text-base sm:text-lg font-medium mb-2 sm:mb-3">
                   Password
                 </label>
                 <div>
@@ -146,9 +146,9 @@ export default function LoginPage() {
               </div>
 
               {/* Divider */}
-              <div className="relative flex items-center my-6">
+              <div className="relative flex items-center my-4 sm:my-6">
                 <div className="flex-grow border-t border-gray-300"></div>
-                <span className="px-4 text-gray-500 bg-white text-base">OR</span>
+                <span className="px-3 sm:px-4 text-gray-500 bg-white text-sm sm:text-base">OR</span>
                 <div className="flex-grow border-t border-gray-300"></div>
               </div>
 
@@ -158,7 +158,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={handleGoogleLogin}
                   disabled={isLoading || isGoogleLoading}
-                  className="h-11 px-8 flex items-center justify-center space-x-3 border border-gray-400 rounded-lg text-gray-700 font-medium hover:bg-gray-50 shadow-sm hover:shadow-md transition-all disabled:opacity-50 relative"
+                  className="h-11 px-4 sm:px-8 flex items-center justify-center space-x-2 sm:space-x-3 border border-gray-400 rounded-lg text-gray-700 font-medium hover:bg-gray-50 shadow-sm hover:shadow-md transition-all disabled:opacity-50 relative text-sm sm:text-base"
                 >
                   {isGoogleLoading ? (
                     <>

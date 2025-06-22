@@ -44,6 +44,8 @@ export async function middleware(request: NextRequest) {
                           !request.nextUrl.pathname.startsWith('/auth') &&
                           !request.nextUrl.pathname.startsWith('/api') &&
                           !request.nextUrl.pathname.startsWith('/test') &&
+                          !request.nextUrl.pathname.startsWith('/sandbox') &&
+                          !request.nextUrl.pathname.startsWith('/runway-sandbox') &&
                           !request.nextUrl.pathname.startsWith('/checkout') &&
                           request.nextUrl.pathname !== '/'
 

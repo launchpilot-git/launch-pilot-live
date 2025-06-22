@@ -368,7 +368,7 @@ Promo Video: ${job.promo_video_url || 'Not available'}
                 </Link>
               </Card>
             ) : jobs.length > 0 ? (
-              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {jobs.map((job) => (
                   <Card key={job.id} className="overflow-hidden">
                     <JobImage 

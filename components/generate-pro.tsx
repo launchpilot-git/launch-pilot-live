@@ -260,6 +260,11 @@ export function GeneratePro() {
                   <p className="mb-4 text-sm text-muted-foreground">
                     Drag and drop your image here, or click to browse
                   </p>
+                  <div className="mb-4 text-xs text-muted-foreground space-y-1">
+                    <p>• Best results: Square or 16:9 landscape images</p>
+                    <p>• Supported formats: JPEG, PNG, WebP</p>
+                    <p>• Maximum size: 16MB</p>
+                  </div>
                   <div className="relative">
                     <input
                       ref={fileInputRef}

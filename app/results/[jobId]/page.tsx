@@ -187,7 +187,7 @@ export default function ResultsPage() {
     <div className="flex min-h-screen flex-col">
       <Navbar isPro={isPro} />
       <main className="flex-1 bg-gray-50">
-        <div className="container mx-auto px-4 py-8 md:px-6">
+        <div className={`container mx-auto px-4 py-8 md:px-6 ${!isPro ? 'pb-24' : ''}`}>
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-4">
@@ -249,14 +249,20 @@ export default function ResultsPage() {
 
           {/* Generated Content Tabs */}
           <Tabs defaultValue="captions" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="captions">Social Captions</TabsTrigger>
-              <TabsTrigger value="emails">Emails</TabsTrigger>
-              <TabsTrigger value="avatar">
-                Avatar Video {!isPro && <Lock className="ml-1 h-3 w-3" />}
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">
+              <TabsTrigger value="captions" className="text-xs sm:text-sm">Social Captions</TabsTrigger>
+              <TabsTrigger value="emails" className="text-xs sm:text-sm">Emails</TabsTrigger>
+              <TabsTrigger value="avatar" className="text-xs sm:text-sm">
+                <span className="flex items-center justify-center">
+                  <span className="truncate">Avatar Video</span>
+                  {!isPro && <Lock className="ml-1 h-3 w-3 flex-shrink-0" />}
+                </span>
               </TabsTrigger>
-              <TabsTrigger value="promo">
-                Promo Video {!isPro && <Lock className="ml-1 h-3 w-3" />}
+              <TabsTrigger value="promo" className="text-xs sm:text-sm">
+                <span className="flex items-center justify-center">
+                  <span className="truncate">Promo Video</span>
+                  {!isPro && <Lock className="ml-1 h-3 w-3 flex-shrink-0" />}
+                </span>
               </TabsTrigger>
             </TabsList>
 
@@ -363,26 +369,27 @@ export default function ResultsPage() {
                           onVideoGenerated={handleVideoUpdate}
                         />
                       ) : jobData.did_video_url && jobData.did_video_url.startsWith('failed:') ? (
-                        <div className="aspect-square max-w-md mx-auto bg-red-50 rounded-lg border-2 border-red-200 flex items-center justify-center">
+                        <div className="aspect-square max-w-full sm:max-w-md mx-auto bg-red-50 rounded-lg border-2 border-red-200 flex items-center justify-center">
                           <div className="text-center p-6">
                             <div className="mb-4">
                               <X className="h-12 w-12 text-red-500 mx-auto" />
                             </div>
                             <h4 className="text-lg font-medium text-red-900 mb-2">Avatar Video Failed</h4>
                             <p className="text-sm text-red-700 mb-3">
-                              We encountered an issue generating your avatar video. Please try again.
+                              We encountered an issue generating your avatar video. Please try again with a different image.
                             </p>
-                            <Button 
-                              onClick={() => window.location.reload()}
-                              variant="outline"
-                              className="border-red-300 text-red-700 hover:bg-red-50"
-                            >
-                              Try Again
-                            </Button>
+                            <Link href="/generate">
+                              <Button 
+                                variant="outline"
+                                className="border-red-300 text-red-700 hover:bg-red-50"
+                              >
+                                Upload New Image
+                              </Button>
+                            </Link>
                           </div>
                         </div>
                       ) : jobData.did_video_url && jobData.did_video_url.startsWith('pending:') ? (
-                        <div className="aspect-square max-w-md mx-auto bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
+                        <div className="aspect-square max-w-full sm:max-w-md mx-auto bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
                           <div className="text-center p-6">
                             <div className="mb-4">
                               <div className="relative inline-flex">
@@ -397,7 +404,7 @@ export default function ResultsPage() {
                           </div>
                         </div>
                       ) : jobData.did_video_url && !jobData.did_video_url.startsWith('pending:') && !jobData.did_video_url.startsWith('failed:') && jobData.did_video_url !== "script_ready" && isAvatarVideoReady ? (
-                        <div className="max-w-md mx-auto space-y-4">
+                        <div className="max-w-full sm:max-w-md mx-auto space-y-4">
                           <CustomVideoPlayer 
                             src={jobData.did_video_url}
                             aspectRatio="square"
@@ -415,7 +422,7 @@ export default function ResultsPage() {
                         </div>
                       ) : jobData.did_video_url && !jobData.did_video_url.startsWith('pending:') && !jobData.did_video_url.startsWith('failed:') && jobData.did_video_url !== "script_ready" ? (
                         // Video URL exists but not ready yet, show loading
-                        <div className="aspect-square max-w-md mx-auto bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
+                        <div className="aspect-square max-w-full sm:max-w-md mx-auto bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
                           <div className="text-center p-6">
                             <div className="mb-4">
                               <div className="relative inline-flex">
@@ -429,14 +436,14 @@ export default function ResultsPage() {
                         </div>
                       ) : (
                         // No video URL at all - shouldn't happen for Pro users
-                        <div className="aspect-square max-w-md mx-auto bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
+                        <div className="aspect-square max-w-full sm:max-w-md mx-auto bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
                           <div className="text-center p-6">
                             <p className="text-sm text-gray-600">No avatar video available</p>
                           </div>
                         </div>
                       )
                     ) : (
-                      <div className="aspect-square max-w-md mx-auto">
+                      <div className="aspect-square max-w-full sm:max-w-md mx-auto">
                         <button
                           onClick={() => setShowAvatarModal(true)}
                           className="relative h-full w-full bg-gradient-to-br from-blue-50 to-purple-50 rounded-md hover:from-blue-100 hover:to-purple-100 transition-colors cursor-pointer"
@@ -491,13 +498,14 @@ export default function ResultsPage() {
                             <p className="text-sm text-red-700 mb-3">
                               {jobData.promo_video_error || "We encountered an issue generating your promotional video. Please try again."}
                             </p>
-                            <Button 
-                              onClick={() => window.location.reload()}
-                              variant="outline"
-                              className="border-red-300 text-red-700 hover:bg-red-50"
-                            >
-                              Try Again
-                            </Button>
+                            <Link href="/generate">
+                              <Button 
+                                variant="outline"
+                                className="border-red-300 text-red-700 hover:bg-red-50"
+                              >
+                                Upload New Image
+                              </Button>
+                            </Link>
                           </div>
                         </div>
                       ) : (
@@ -541,16 +549,16 @@ export default function ResultsPage() {
           </Tabs>
 
           {/* Actions */}
-          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-between">
-            <Link href="/generate">
-              <Button variant="outline">
+          <div className="mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-between">
+            <Link href="/generate" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto">
                 Create Another Project
               </Button>
             </Link>
             
             {!isPro && (
-              <Link href="/checkout">
-                <Button className="gap-1.5">
+              <Link href="/checkout" className="w-full sm:w-auto">
+                <Button className="gap-1.5 w-full sm:w-auto">
                   <Sparkles className="h-4 w-4" />
                   Upgrade to Pro for Videos
                 </Button>
@@ -562,15 +570,15 @@ export default function ResultsPage() {
 
       {/* Sticky footer upgrade CTA for free users */}
       {!isPro && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4 z-50">
-          <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Sparkles className="h-5 w-5 text-accent" />
-              <p className="text-sm font-medium">Want to generate videos and save your history?</p>
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-3 sm:p-4 z-50">
+          <div className="container mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 text-center sm:text-left">
+              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-accent flex-shrink-0" />
+              <p className="text-xs sm:text-sm font-medium">Want to generate videos and save your history?</p>
             </div>
             <Link href="/checkout">
-              <Button className="gap-1.5">
-                <Sparkles className="h-4 w-4" />
+              <Button size="sm" className="gap-1.5">
+                <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
                 Upgrade to Pro
               </Button>
             </Link>

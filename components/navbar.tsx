@@ -59,7 +59,7 @@ function UserMenu({ user, signOut }: { user: any, signOut: () => void }) {
             className="fixed inset-0 z-10" 
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-xl border border-white/20 rounded-2xl shadow-xl z-20 py-2">
+          <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-xl border border-white/20 rounded-2xl shadow-xl z-20 py-2">
             <div className="px-4 py-3 border-b border-gray-100">
               <div className="flex items-center space-x-3">
                 {user?.user_metadata?.avatar_url && !dropdownAvatarError ? (
@@ -111,7 +111,7 @@ export function Navbar({ isPro = false, hasProjects = false }: { isPro?: boolean
   const isDashboard = pathname.startsWith('/dashboard') || pathname.startsWith('/generate')
   
   return (
-    <header className="bg-white/80 backdrop-blur-xl rounded-xl py-3 px-6 flex items-center justify-between mb-4 border border-white/15 shadow-[0px_10px_40px_rgba(0,0,0,0.08)]">
+    <header className="bg-white/80 backdrop-blur-xl rounded-xl py-3 px-3 sm:px-6 flex items-center justify-between mb-4 border border-white/15 shadow-[0px_10px_40px_rgba(0,0,0,0.08)]">
       <div className="flex-shrink-0">
         <Link href="/" className="flex items-center">
           <Image
@@ -119,12 +119,12 @@ export function Navbar({ isPro = false, hasProjects = false }: { isPro?: boolean
             alt="Launch Pilot"
             width={150}
             height={40}
-            className="h-10 w-auto"
+            className="h-8 sm:h-10 w-auto"
           />
         </Link>
       </div>
 
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center space-x-2 sm:space-x-3">
         {loading ? (
           <div className="flex items-center space-x-3">
             <div className="animate-pulse bg-gray-200 rounded-full px-4 py-1.5 w-24 h-8"></div>
@@ -135,9 +135,9 @@ export function Navbar({ isPro = false, hasProjects = false }: { isPro?: boolean
             {isDashboard && hasProjects ? (
               <>
                 {plan === 'pro' && (
-                  <div className="bg-[#f4c537] text-[#2c0e31] rounded-full px-4 py-1.5 text-xs font-bold uppercase shadow-sm flex items-center gap-1.5">
+                  <div className="bg-[#f4c537] text-[#2c0e31] rounded-full px-3 sm:px-4 py-1.5 text-xs font-bold uppercase shadow-sm flex items-center gap-1 sm:gap-1.5">
                     <Sparkles className="w-3 h-3 fill-current" />
-                    PRO
+                    <span className="hidden sm:inline">PRO</span>
                   </div>
                 )}
                 <UserMenu user={user} signOut={signOut} />

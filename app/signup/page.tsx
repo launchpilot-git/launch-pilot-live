@@ -67,18 +67,18 @@ export default function SignUp() {
       </div>
       
       {/* Main Content - Single Column with Gradient Background */}
-      <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
-        <div className="max-w-md w-full mx-4">
-          <div className="bg-white rounded-3xl shadow-2xl p-8">
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-[#2c0e31] mb-2">Welcome to Launch Pilot</h1>
-              <p className="text-gray-500 text-lg">Your AI assistant for marketing content</p>
+      <div className="flex items-center justify-center min-h-[calc(100vh-100px)] px-4">
+        <div className="max-w-md w-full">
+          <div className="bg-white rounded-3xl shadow-2xl p-4 sm:p-8">
+            <div className="text-center mb-6 sm:mb-8">
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#2c0e31] mb-2">Welcome to Launch Pilot</h1>
+              <p className="text-gray-500 text-base sm:text-lg">Your AI assistant for marketing content</p>
             </div>
 
-            <form onSubmit={handleEmailSignup} className="space-y-8">
+            <form onSubmit={handleEmailSignup} className="space-y-4 sm:space-y-8">
               {/* Email Field */}
               <div>
-                <label className="block text-gray-700 text-lg font-medium mb-3">
+                <label className="block text-gray-700 text-base sm:text-lg font-medium mb-2 sm:mb-3">
                   Email
                 </label>
                 <div>
@@ -111,7 +111,7 @@ export default function SignUp() {
               </Button>
 
               {/* Terms Text */}
-              <p className="text-center text-sm text-gray-500">
+              <p className="text-center text-xs sm:text-sm text-gray-500 px-2">
                 By signing up, you agree to the{" "}
                 <Link href="/terms" className="text-[#2c0e31] hover:underline">
                   Terms of Use
@@ -127,9 +127,9 @@ export default function SignUp() {
               </p>
 
               {/* Divider */}
-              <div className="relative flex items-center my-6">
+              <div className="relative flex items-center my-4 sm:my-6">
                 <div className="flex-grow border-t border-gray-300"></div>
-                <span className="px-4 text-gray-500 bg-white text-base">OR</span>
+                <span className="px-3 sm:px-4 text-gray-500 bg-white text-sm sm:text-base">OR</span>
                 <div className="flex-grow border-t border-gray-300"></div>
               </div>
 
@@ -139,7 +139,7 @@ export default function SignUp() {
                   type="button"
                   onClick={handleGoogleSignup}
                   disabled={isLoading || isGoogleLoading}
-                  className="h-11 px-8 flex items-center justify-center space-x-3 border border-gray-400 rounded-lg text-gray-700 font-medium hover:bg-gray-50 shadow-sm hover:shadow-md transition-all disabled:opacity-50 relative"
+                  className="h-11 px-4 sm:px-8 flex items-center justify-center space-x-2 sm:space-x-3 border border-gray-400 rounded-lg text-gray-700 font-medium hover:bg-gray-50 shadow-sm hover:shadow-md transition-all disabled:opacity-50 relative text-sm sm:text-base"
                 >
                   {isGoogleLoading ? (
                     <>
