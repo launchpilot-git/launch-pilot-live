@@ -164,6 +164,24 @@ export class DIDService {
     }
   }
 
+  async refreshVideoUrl(talkId: string): Promise<string | null> {
+    try {
+      console.log(`Refreshing video URL for talk ID: ${talkId}`)
+      const talkData = await this.getTalk(talkId)
+      
+      if (talkData.status === "done" && talkData.result_url) {
+        console.log(`Successfully refreshed video URL for talk ID: ${talkId}`)
+        return talkData.result_url
+      } else {
+        console.error(`Unable to refresh video URL for talk ID: ${talkId}, status: ${talkData.status}`)
+        return null
+      }
+    } catch (error) {
+      console.error(`Error refreshing video URL for talk ID: ${talkId}`, error)
+      return null
+    }
+  }
+
   async createTalkFromScript(
     imageUrl: string,
     script: string,

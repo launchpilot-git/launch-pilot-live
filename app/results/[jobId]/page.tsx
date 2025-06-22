@@ -353,6 +353,7 @@ export default function ResultsPage() {
                             src={jobData.did_video_url}
                             aspectRatio="square"
                             className="shadow-lg"
+                            jobId={jobId}
                           />
                           <Button 
                             onClick={() => downloadVideo(jobData.did_video_url!, `${jobData.business_name}-avatar-video.mp4`)}

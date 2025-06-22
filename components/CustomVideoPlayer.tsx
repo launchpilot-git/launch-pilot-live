@@ -8,13 +8,15 @@ interface CustomVideoPlayerProps {
   poster?: string;
   className?: string;
   aspectRatio?: 'video' | 'square';
+  jobId?: string; // Optional job ID for D-ID URL refresh
 }
 
 export default function CustomVideoPlayer({ 
   src, 
   poster, 
   className = '', 
-  aspectRatio = 'video' 
+  aspectRatio = 'video',
+  jobId
 }: CustomVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -37,7 +39,9 @@ export default function CustomVideoPlayer({
   // Get the appropriate video source (with proxy if needed)
   const getVideoSrc = (originalSrc: string) => {
     if (shouldUseProxy(originalSrc)) {
-      return `/api/video-proxy?url=${encodeURIComponent(originalSrc)}`;
+      const proxyUrl = `/api/video-proxy?url=${encodeURIComponent(originalSrc)}`;
+      // Add jobId if available for D-ID URL refresh
+      return jobId ? `${proxyUrl}&jobId=${jobId}` : proxyUrl;
     }
     return originalSrc;
   };
