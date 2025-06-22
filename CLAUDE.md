@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Production Deployment
+
+**Current Production URL**: [https://launch-pilot-live.vercel.app/](https://launch-pilot-live.vercel.app/)
+
+*Note: This is the current production URL until a custom domain is added.*
+
 ## Development Commands
 
 ```bash
