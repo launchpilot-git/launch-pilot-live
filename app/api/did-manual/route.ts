@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { DIDService } from "@/lib/d-id-service-fixed"
+import { getPresenterConfigForTier, supportsCustomPresenters } from "@/lib/presenter-config"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -108,48 +109,8 @@ async function checkUserAuth(request: NextRequest) {
   }
 }
 
-// Voice configuration based on brand style (using default presenter for current plan)
-function getPresenterConfig(brandStyle: string) {
-  const voiceConfigs = {
-    professional: {
-      voice: "en-US-AriaNeural",
-      style: "Friendly"
-    },
-    elegant: {
-      voice: "en-US-AriaNeural", 
-      style: "Hopeful"
-    },
-    bold: {
-      voice: "en-US-JennyNeural",  // Use female voice for consistency
-      style: "Excited"
-    },
-    playful: {
-      voice: "en-US-JennyNeural",
-      style: "Cheerful"
-    },
-    luxury: {
-      voice: "en-US-AriaNeural",
-      style: "Hopeful"
-    },
-    minimal: {
-      voice: "en-US-AriaNeural",
-      style: "Friendly"
-    },
-    casual: {
-      voice: "en-US-JennyNeural",
-      style: "Cheerful"
-    },
-    witty: {
-      voice: "en-US-JennyNeural",
-      style: "Excited"
-    }
-  }
-  
-  return voiceConfigs[brandStyle.toLowerCase()] || {
-    voice: "en-US-JennyNeural",
-    style: "Cheerful"
-  }
-}
+// This function is now replaced by the presenter-config.ts system
+// Kept for backward compatibility but will use the new tier-based system
 
 export async function POST(request: NextRequest) {
   let jobId: string | null = null
@@ -240,24 +201,34 @@ export async function POST(request: NextRequest) {
       throw new Error("D-ID API connection test failed - check API key and network connectivity")
     }
 
-    // Get voice configuration based on brand style (using default presenter)
-    const voiceConfig = getPresenterConfig(job.brand_style)
-    await logStep(jobId, "VOICE_SELECTED", { ...voiceConfig, brand_style: job.brand_style, using_default_presenter: true })
+    // Get presenter configuration based on brand style and current D-ID plan tier
+    const presenterSetup = getPresenterConfigForTier(job.brand_style)
+    const { config: presenterConfig, useDefaultPresenter, tierInfo } = presenterSetup
+    
+    await logStep(jobId, "PRESENTER_SELECTED", { 
+      ...presenterConfig, 
+      brand_style: job.brand_style, 
+      useDefaultPresenter,
+      didPlanTier: tierInfo.currentTier,
+      supportsCustomPresenters: tierInfo.supportsCustomPresenters
+    })
 
     // Create D-ID video with the edited script
     try {
       console.log("[D-ID Manual] Creating D-ID talk with params:", {
         imageUrl: job.image_url,
         scriptLength: script.length,
-        voice: voiceConfig.voice,
-        voiceStyle: voiceConfig.style,
-        useDefaultPresenter: true  // Use default presenter for current plan
+        presenter: presenterConfig.presenter || "default",
+        voice: presenterConfig.voice,
+        voiceStyle: presenterConfig.style,
+        useDefaultPresenter,
+        didPlanTier: tierInfo.currentTier
       })
 
-      const didResponse = await didService.createTalkFromScript(job.image_url, script, {
-        voice: voiceConfig.voice as any,
-        voiceStyle: voiceConfig.style as any,
-        useDefaultPresenter: true, // Use default presenter compatible with current plan
+      const didOptions: any = {
+        voice: presenterConfig.voice as any,
+        voiceStyle: presenterConfig.style as any,
+        useDefaultPresenter,
         expressions: [
           {
             start_frame: 0,
@@ -265,7 +236,14 @@ export async function POST(request: NextRequest) {
             intensity: 0.8,
           },
         ],
-      })
+      }
+
+      // Only add presenter ID if we have premium access and a specific presenter
+      if (!useDefaultPresenter && presenterConfig.presenter) {
+        didOptions.presenter = presenterConfig.presenter
+      }
+
+      const didResponse = await didService.createTalkFromScript(job.image_url, script, didOptions)
 
       console.log("[D-ID Manual] D-ID talk created successfully:", {
         talkId: didResponse.id,
@@ -363,7 +341,7 @@ export async function POST(request: NextRequest) {
         throw fallbackError
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating manual D-ID video:", error)
 
     if (jobId) {
