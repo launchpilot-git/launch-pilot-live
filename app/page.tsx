@@ -13,9 +13,9 @@ export default function Home() {
         
         {/* Hero Section */}
         <div className="mt-8 sm:mt-12 md:mt-20 text-center">
-          {/* NOW AVAILABLE Badge */}
-          <div className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium mb-6 sm:mb-8 shadow-sm">
-            <span>NOW AVAILABLE</span>
+          {/* Launch Pilot is now available Badge */}
+          <div className="inline-flex items-center bg-white border border-gray-300/50 text-gray-600 px-5 py-2 rounded-full text-sm font-normal mb-6 sm:mb-8 shadow-[0_1px_3px_0_rgba(0,0,0,0.1),0_1px_2px_0_rgba(0,0,0,0.06)]">
+            <span>Launch Pilot is now available!</span>
           </div>
           
           {/* Main Heading */}
