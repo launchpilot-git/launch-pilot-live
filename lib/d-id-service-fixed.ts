@@ -186,7 +186,7 @@ export class DIDService {
     imageUrl: string,
     script: string,
     options: {
-      voice?: "en-US-JennyNeural" | "en-US-BrianNeural" | "en-US-AriaNeural"
+      voice?: "en-US-JennyNeural" | "en-US-BrianNeural" | "en-US-AriaNeural" | "en-US-GuyNeural"
       voiceStyle?:
         | "Cheerful"
         | "Excited"
@@ -204,6 +204,7 @@ export class DIDService {
       webhook?: string
       webhookData?: any
       useDefaultPresenter?: boolean
+      presenter?: string  // D-ID presenter ID (e.g., "mary-26F6sVe7Yg")
     } = {},
   ): Promise<DIDTalkResponse> {
     // Validate script length (D-ID has limits) - but ensure minimum length too
@@ -217,13 +218,16 @@ export class DIDService {
       console.warn("Script truncated to 500 characters for D-ID API")
     }
 
-    // Use a default presenter image if the product image doesn't have a face
-    const presenterImageUrl = options.useDefaultPresenter
-      ? "https://create-images-results.d-id.com/DefaultPresenters/Noelle_f/image.png"
-      : imageUrl
+    // Use specified presenter, default presenter, or product image
+    const presenterImageUrl = options.presenter
+      ? `https://create-images-results.d-id.com/api_docs/presenters/${options.presenter}/image.png`
+      : options.useDefaultPresenter
+        ? "https://create-images-results.d-id.com/DefaultPresenters/Noelle_f/image.png"
+        : imageUrl
 
     console.log("Creating D-ID talk with:", {
       presenterImageUrl,
+      presenter: options.presenter || (options.useDefaultPresenter ? "Noelle_f (default)" : "product image"),
       scriptLength: script.length,
       voice: options.voice,
       voiceStyle: options.voiceStyle,

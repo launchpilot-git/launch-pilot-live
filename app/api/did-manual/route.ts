@@ -108,20 +108,56 @@ async function checkUserAuth(request: NextRequest) {
   }
 }
 
-// Voice configuration based on brand style
-function getVoiceConfig(brandStyle: string) {
-  const voiceConfigs = {
-    professional: { voice: "en-US-AriaNeural", style: "Friendly" },
-    elegant: { voice: "en-US-AriaNeural", style: "Hopeful" },
-    bold: { voice: "en-US-JennyNeural", style: "Excited" },
-    playful: { voice: "en-US-JennyNeural", style: "Cheerful" },
-    luxury: { voice: "en-US-AriaNeural", style: "Hopeful" },
-    minimal: { voice: "en-US-BrianNeural", style: "Friendly" },
-    casual: { voice: "en-US-JennyNeural", style: "Cheerful" },
-    witty: { voice: "en-US-JennyNeural", style: "Excited" },
+// Presenter and voice configuration based on brand style
+function getPresenterConfig(brandStyle: string) {
+  const presenterConfigs = {
+    professional: {
+      presenter: "mary-26F6sVe7Yg",  // Mature, professional female
+      voice: "en-US-AriaNeural",
+      style: "Friendly"
+    },
+    elegant: {
+      presenter: "sophia-utD_M2P2Lk",  // Sophisticated female
+      voice: "en-US-AriaNeural", 
+      style: "Hopeful"
+    },
+    bold: {
+      presenter: "jack-Pt27VkP3hW",  // Confident male
+      voice: "en-US-GuyNeural",  // Male voice to match presenter
+      style: "Excited"
+    },
+    playful: {
+      presenter: "lily-ADdf3C9AUh",  // Energetic female
+      voice: "en-US-JennyNeural",
+      style: "Cheerful"
+    },
+    luxury: {
+      presenter: "diana-tfTP6K9S9u",  // Upscale female
+      voice: "en-US-AriaNeural",
+      style: "Hopeful"
+    },
+    minimal: {
+      presenter: "matt-g7muIj5CiD",  // Clean-cut male
+      voice: "en-US-BrianNeural",  // Male voice to match presenter
+      style: "Friendly"
+    },
+    casual: {
+      presenter: "dylan-O22mVF9zIM",  // Relaxed male
+      voice: "en-US-GuyNeural",  // Male voice to match presenter
+      style: "Cheerful"
+    },
+    witty: {
+      presenter: "jaimie-mhQav1eFuW",  // Charismatic female
+      voice: "en-US-JennyNeural",
+      style: "Excited"
+    }
   }
-
-  return voiceConfigs[brandStyle.toLowerCase()] || { voice: "en-US-JennyNeural", style: "Cheerful" }
+  
+  return presenterConfigs[brandStyle.toLowerCase()] || {
+    presenter: "ella-gnVGWQ_kNS",  // Default female presenter
+    voice: "en-US-JennyNeural",
+    style: "Cheerful"
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -213,24 +249,26 @@ export async function POST(request: NextRequest) {
       throw new Error("D-ID API connection test failed - check API key and network connectivity")
     }
 
-    // Get voice configuration based on brand style
-    const voiceConfig = getVoiceConfig(job.brand_style)
-    await logStep(jobId, "VOICE_SELECTED", { ...voiceConfig, brand_style: job.brand_style })
+    // Get presenter and voice configuration based on brand style
+    const presenterConfig = getPresenterConfig(job.brand_style)
+    await logStep(jobId, "PRESENTER_AND_VOICE_SELECTED", { ...presenterConfig, brand_style: job.brand_style })
 
     // Create D-ID video with the edited script
     try {
       console.log("[D-ID Manual] Creating D-ID talk with params:", {
         imageUrl: job.image_url,
         scriptLength: script.length,
-        voice: voiceConfig.voice,
-        voiceStyle: voiceConfig.style,
-        useDefaultPresenter: true
+        presenter: presenterConfig.presenter,
+        voice: presenterConfig.voice,
+        voiceStyle: presenterConfig.style,
+        useDefaultPresenter: false
       })
 
       const didResponse = await didService.createTalkFromScript(job.image_url, script, {
-        voice: voiceConfig.voice as any,
-        voiceStyle: voiceConfig.style as any,
-        useDefaultPresenter: true, // Use default presenter to avoid face detection issues
+        presenter: presenterConfig.presenter,
+        voice: presenterConfig.voice as any,
+        voiceStyle: presenterConfig.style as any,
+        useDefaultPresenter: false, // Don't use default since we're specifying a presenter
         expressions: [
           {
             start_frame: 0,
