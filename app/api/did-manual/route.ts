@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { DIDService } from "@/lib/d-id-service-fixed"
+import { getPresenterConfigForTier, supportsCustomPresenters } from "@/lib/presenter-config"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -108,57 +109,8 @@ async function checkUserAuth(request: NextRequest) {
   }
 }
 
-// Presenter and voice configuration based on brand style
-function getPresenterConfig(brandStyle: string) {
-  const presenterConfigs = {
-    professional: {
-      presenter: "mary-26F6sVe7Yg",  // Mature, professional female
-      voice: "en-US-AriaNeural",
-      style: "Friendly"
-    },
-    elegant: {
-      presenter: "sophia-utD_M2P2Lk",  // Sophisticated female
-      voice: "en-US-AriaNeural", 
-      style: "Hopeful"
-    },
-    bold: {
-      presenter: "jack-Pt27VkP3hW",  // Confident male
-      voice: "en-US-GuyNeural",  // Male voice to match presenter
-      style: "Excited"
-    },
-    playful: {
-      presenter: "lily-ADdf3C9AUh",  // Energetic female
-      voice: "en-US-JennyNeural",
-      style: "Cheerful"
-    },
-    luxury: {
-      presenter: "diana-tfTP6K9S9u",  // Upscale female
-      voice: "en-US-AriaNeural",
-      style: "Hopeful"
-    },
-    minimal: {
-      presenter: "matt-g7muIj5CiD",  // Clean-cut male
-      voice: "en-US-BrianNeural",  // Male voice to match presenter
-      style: "Friendly"
-    },
-    casual: {
-      presenter: "dylan-O22mVF9zIM",  // Relaxed male
-      voice: "en-US-GuyNeural",  // Male voice to match presenter
-      style: "Cheerful"
-    },
-    witty: {
-      presenter: "jaimie-mhQav1eFuW",  // Charismatic female
-      voice: "en-US-JennyNeural",
-      style: "Excited"
-    }
-  }
-  
-  return presenterConfigs[brandStyle.toLowerCase()] || {
-    presenter: "ella-gnVGWQ_kNS",  // Default female presenter
-    voice: "en-US-JennyNeural",
-    style: "Cheerful"
-  }
-}
+// This function is now replaced by the presenter-config.ts system
+// Kept for backward compatibility but will use the new tier-based system
 
 export async function POST(request: NextRequest) {
   let jobId: string | null = null
@@ -249,26 +201,34 @@ export async function POST(request: NextRequest) {
       throw new Error("D-ID API connection test failed - check API key and network connectivity")
     }
 
-    // Get presenter and voice configuration based on brand style
-    const presenterConfig = getPresenterConfig(job.brand_style)
-    await logStep(jobId, "PRESENTER_AND_VOICE_SELECTED", { ...presenterConfig, brand_style: job.brand_style })
+    // Get presenter configuration based on brand style and current D-ID plan tier
+    const presenterSetup = getPresenterConfigForTier(job.brand_style)
+    const { config: presenterConfig, useDefaultPresenter, tierInfo } = presenterSetup
+    
+    await logStep(jobId, "PRESENTER_SELECTED", { 
+      ...presenterConfig, 
+      brand_style: job.brand_style, 
+      useDefaultPresenter,
+      didPlanTier: tierInfo.currentTier,
+      supportsCustomPresenters: tierInfo.supportsCustomPresenters
+    })
 
     // Create D-ID video with the edited script
     try {
       console.log("[D-ID Manual] Creating D-ID talk with params:", {
         imageUrl: job.image_url,
         scriptLength: script.length,
-        presenter: presenterConfig.presenter,
+        presenter: presenterConfig.presenter || "default",
         voice: presenterConfig.voice,
         voiceStyle: presenterConfig.style,
-        useDefaultPresenter: false
+        useDefaultPresenter,
+        didPlanTier: tierInfo.currentTier
       })
 
-      const didResponse = await didService.createTalkFromScript(job.image_url, script, {
-        presenter: presenterConfig.presenter,
+      const didOptions: any = {
         voice: presenterConfig.voice as any,
         voiceStyle: presenterConfig.style as any,
-        useDefaultPresenter: false, // Don't use default since we're specifying a presenter
+        useDefaultPresenter,
         expressions: [
           {
             start_frame: 0,
@@ -276,7 +236,14 @@ export async function POST(request: NextRequest) {
             intensity: 0.8,
           },
         ],
-      })
+      }
+
+      // Only add presenter ID if we have premium access and a specific presenter
+      if (!useDefaultPresenter && presenterConfig.presenter) {
+        didOptions.presenter = presenterConfig.presenter
+      }
+
+      const didResponse = await didService.createTalkFromScript(job.image_url, script, didOptions)
 
       console.log("[D-ID Manual] D-ID talk created successfully:", {
         talkId: didResponse.id,
