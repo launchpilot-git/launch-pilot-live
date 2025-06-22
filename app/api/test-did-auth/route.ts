@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
         firstPart: apiKey?.split(":")[0]?.substring(0, 10) + "..." || "missing",
         isExpectedKey: apiKey?.startsWith("bGF1bmNocGlsb3Qx") || false // Check if it's the new key
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      deploymentVersion: "v2" // Force redeployment
     }
 
     if (!apiKey) {

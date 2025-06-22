@@ -81,30 +81,50 @@ export async function GET(request: NextRequest) {
 
       // Refresh the video URL
       console.log("[Video Proxy] Calling D-ID service to refresh video URL...")
-      const newUrl = await didService.refreshVideoUrl(talkId)
-      console.log("[Video Proxy] D-ID refresh response:", newUrl ? "Success" : "Failed")
       
-      if (!newUrl) {
-        console.error("[Video Proxy] Failed to refresh video URL for talk ID:", talkId)
-        return NextResponse.json(
-          { error: "Failed to refresh video URL" },
-          { status: 500 }
-        )
-      }
-
-      // Update the database if we have a job ID
-      if (jobId) {
-        const { error: updateError } = await supabase
-          .from("jobs")
-          .update({ did_video_url: newUrl })
-          .eq("id", jobId)
-
-        if (updateError) {
-          console.error("Failed to update job with new video URL:", updateError)
-        } else {
-          console.log(`Updated job ${jobId} with refreshed video URL`)
+      try {
+        const newUrl = await didService.refreshVideoUrl(talkId)
+        console.log("[Video Proxy] D-ID refresh response:", newUrl ? "Success" : "Failed")
+        
+        if (!newUrl) {
+          console.error("[Video Proxy] Failed to refresh video URL for talk ID:", talkId)
+          
+          // Update the job to indicate the video has expired
+          if (jobId) {
+            const { error: updateError } = await supabase
+              .from("jobs")
+              .update({ 
+                did_video_url: "expired:video_not_found",
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", jobId)
+              
+            if (updateError) {
+              console.error("[Video Proxy] Failed to update job with expired status:", updateError)
+            } else {
+              console.log(`[Video Proxy] Updated job ${jobId} with expired video status`)
+            }
+          }
+          
+          return NextResponse.json(
+            { error: "Video has expired and is no longer available. Please regenerate the video." },
+            { status: 410 } // 410 Gone - indicates the resource is no longer available
+          )
         }
-      }
+
+        // Update the database if we have a job ID
+        if (jobId) {
+          const { error: updateError } = await supabase
+            .from("jobs")
+            .update({ did_video_url: newUrl })
+            .eq("id", jobId)
+
+          if (updateError) {
+            console.error("Failed to update job with new video URL:", updateError)
+          } else {
+            console.log(`Updated job ${jobId} with refreshed video URL`)
+          }
+        }
 
       // Try fetching the video with the new URL
       const newResponse = await fetch(newUrl)
