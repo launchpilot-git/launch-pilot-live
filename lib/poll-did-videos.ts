@@ -30,10 +30,11 @@ export async function pollPendingDIDVideos(options?: { maxRetries?: number; time
   console.log(`[pollPendingDIDVideos] Starting poll at ${new Date().toISOString()}`);
   
   try {
-    // Find all jobs with pending DID videos, including creation timestamp for timeout logic
+    // Find all jobs with pending videos OR recently completed Runway videos
+    // We need to check for completed Runway videos to trigger UI updates
     const { data: pendingJobs, error } = await supabase
       .from("jobs")
-      .select("id, did_video_url, promo_video_url, created_at")
+      .select("id, did_video_url, promo_video_url, created_at, updated_at")
       .or("did_video_url.like.pending:%,promo_video_url.like.pending:%")
       .not("did_video_url", "eq", "pending:creating");
 
