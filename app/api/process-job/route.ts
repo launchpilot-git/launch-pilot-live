@@ -231,6 +231,91 @@ async function ensureRunwayCompatibleImage(imageUrl: string, jobId: string) {
   }
 }
 
+// Helper function to get user-friendly error message
+function getRunwayUserFriendlyError(error: any): { message: string; canRetry: boolean } {
+  const errorMessage = error.message?.toLowerCase() || ''
+  const errorString = JSON.stringify(error).toLowerCase()
+  
+  // Aspect ratio issues
+  if (errorMessage.includes('aspect ratio') || errorMessage.includes('width / height ratio') || 
+      errorMessage.includes('dimensions')) {
+    return {
+      message: "Your image dimensions aren't compatible with video generation. Please upload an image with one of these aspect ratios: 16:9 (landscape), 9:16 (portrait), or 1:1 (square).",
+      canRetry: true
+    }
+  }
+  
+  // File size issues
+  if (errorMessage.includes('file size') || errorMessage.includes('too large') || 
+      errorMessage.includes('exceeds') || errorMessage.includes('16mb')) {
+    return {
+      message: "Your image is too large. Please upload an image smaller than 16MB.",
+      canRetry: true
+    }
+  }
+  
+  // File type issues
+  if (errorMessage.includes('content-type') || errorMessage.includes('file type') || 
+      errorMessage.includes('unsupported format') || errorMessage.includes('invalid format')) {
+    return {
+      message: "Please upload a JPEG, PNG, or WebP image. Other formats aren't supported for video generation.",
+      canRetry: true
+    }
+  }
+  
+  // Image resolution/quality issues
+  if (errorMessage.includes('resolution') || errorMessage.includes('quality') || 
+      errorMessage.includes('too small') || errorMessage.includes('minimum resolution') ||
+      errorMessage.includes('pixels') || errorMessage.includes('image quality') ||
+      errorMessage.includes('insufficient resolution') || errorMessage.includes('low resolution') ||
+      errorMessage.includes('image size') || errorMessage.includes('pixel count')) {
+    return {
+      message: "Your image resolution is too low for video generation. Please upload a higher quality image (minimum 512x512 pixels recommended).",
+      canRetry: true
+    }
+  }
+  
+  // URL/Network issues
+  if (errorMessage.includes('url') || errorMessage.includes('https') || 
+      errorMessage.includes('failed to fetch') || errorMessage.includes('network')) {
+    return {
+      message: "There was an issue accessing your image. Please try uploading again.",
+      canRetry: true
+    }
+  }
+  
+  // Content moderation issues
+  if (errorMessage.includes('moderation') || errorMessage.includes('policy') || 
+      errorMessage.includes('prohibited') || errorMessage.includes('inappropriate')) {
+    return {
+      message: "We couldn't process this image. Please try a different product image.",
+      canRetry: true
+    }
+  }
+  
+  // Timeout issues
+  if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+    return {
+      message: "Video generation is taking longer than expected. Please try again in a few minutes.",
+      canRetry: true
+    }
+  }
+  
+  // Rate limit issues
+  if (errorMessage.includes('rate limit') || errorMessage.includes('too many requests')) {
+    return {
+      message: "We're experiencing high demand. Please try again in a few minutes.",
+      canRetry: true
+    }
+  }
+  
+  // Generic/unknown errors
+  return {
+    message: "We encountered an issue generating your video. Please try again with a different image.",
+    canRetry: true
+  }
+}
+
 // Runway video generation using the official SDK
 async function createRunwayVideo(jobId: string, imageUrl: string, script: string) {
   const RUNWAY_API_KEY = process.env.RUNWAY_API_KEY || process.env.RUNWAYML_API_SECRET || process.env.RUNWAY_API_TOKEN
@@ -306,9 +391,9 @@ async function createRunwayVideo(jobId: string, imageUrl: string, script: string
         throw new Error("No video URL in completed task")
       }
     } else if (task.status === "FAILED") {
-      throw new Error(`Runway task failed: ${task.failureReason || "Unknown error"}`)
+      throw new Error(`${task.failureReason || "Video generation failed"}`)
     } else {
-      throw new Error("Runway task timed out")
+      throw new Error("Video generation is taking longer than expected")
     }
   } catch (error) {
     await logStep(jobId, "RUNWAY_REQUEST_EXCEPTION", {
@@ -317,20 +402,23 @@ async function createRunwayVideo(jobId: string, imageUrl: string, script: string
       errorType: error.constructor.name,
     })
     
-    // Check if it's an aspect ratio error
-    if (error.message.includes("Invalid asset aspect ratio") || error.message.includes("width / height ratio")) {
-      await logStep(jobId, "RUNWAY_ASPECT_RATIO_ERROR", {
-        error: error.message,
-        imageUrl,
-        note: "Image aspect ratio incompatible with Runway requirements (must be 0.5-2.0)",
-        suggestion: "Consider image preprocessing or using different model"
-      })
-      
-      // For now, we'll still throw the error, but with better context
-      throw new Error(`Image aspect ratio incompatible with Runway requirements: ${error.message}`)
-    }
+    // Get user-friendly error message
+    const userError = getRunwayUserFriendlyError(error)
     
-    throw error
+    await logStep(jobId, "RUNWAY_USER_ERROR", {
+      originalError: error.message,
+      userMessage: userError.message,
+      canRetry: userError.canRetry
+    })
+    
+    // Update job with failed status and user-friendly error
+    await supabase.from("jobs").update({ 
+      promo_video_url: `failed:${userError.message}`,
+      promo_video_error: userError.message
+    }).eq("id", jobId)
+    
+    // Throw the user-friendly error
+    throw new Error(userError.message)
   }
 }
 
@@ -340,6 +428,13 @@ export async function POST(request: NextRequest) {
   try {
     const { jobId: requestJobId } = await request.json()
     jobId = requestJobId
+
+    if (!jobId) {
+      return NextResponse.json(
+        { error: "Job ID is required" },
+        { status: 400 }
+      )
+    }
 
     console.log(`Starting job processing for ${jobId}`)
     
@@ -405,7 +500,56 @@ export async function POST(request: NextRequest) {
       caption: `Analyze this product image and write a short social media caption (under 220 characters) using this brand style: ${job.brand_style}, for a business in the ${job.industry} industry. Make it engaging and include relevant hashtags.`,
       email: `Analyze this product image and write a 100–150 word marketing email to help ${job.business_name} (in the ${job.industry} industry) promote this product. Use a ${job.brand_style} tone. This is for a customer newsletter. Include a compelling subject line.`,
       avatarScript: `Analyze this product image and write a 2–3 sentence script for a talking avatar who is introducing this product directly to camera. Keep it conversational, confident, and aligned with the ${job.brand_style} tone. The business is called ${job.business_name}. Focus on the key benefits visible in the image.`,
-      cinematicScript: `Analyze this product image and create a professional product demonstration video. Focus on subtle, elegant motion that showcases the product's key features and quality. Use cinematic camera movements like slow zoom, gentle rotation, or smooth panning. Make it look premium and sophisticated without any text or voiceover. Style: ${job.brand_style}. Keep the description under 50 words and focus purely on visual movement and lighting.`,
+      cinematicScript: `You are creating a prompt for Runway Gen-4 Turbo video generation. Analyze this product image and generate a Runway-optimized prompt.
+
+CRITICAL ANALYSIS PHASE:
+First, analyze the image to determine:
+1. Product category (beauty/tech/fashion/food/automotive/home/other)
+2. Background complexity (simple/complex)
+3. Lighting conditions
+4. Overall composition
+
+ENHANCED PROMPT TEMPLATE:
+{SUBJECT}, {ENHANCED_MOTION}, {ENVIRONMENT}, {LIGHTING} --length 5s --no text watermark blurry distorted duplicate mutation deformed low quality artifacts grain pixelated
+
+ASSEMBLY GUIDELINES:
+
+1. SUBJECT: Extract core product in 6 words or less (e.g., "crystal perfume bottle", "sleek wireless headphones")
+
+2. ENHANCED MOTION: Use brand tone mapping for "${job.brand_style}":
+   - bold → "dramatic push-in with slight upward tilt"
+   - witty → "playful bounce-in with gentle left pan"
+   - casual → "handheld drift-right with natural sway"
+   - elegant → "smooth arc-right with gradual pullback"
+   - uplifting → "ascending dolly-in with brightening exposure"
+   - fun → "energetic pan-left with slight zoom pulse"
+   - empowering → "steady rise-up with confident forward push"
+   - minimalist → "zen-like slow zoom with static frame"
+
+3. PRODUCT CATEGORY OVERRIDE (if applicable):
+   - beauty → "luxurious reveal with soft glow"
+   - tech → "precision engineering showcase with clean lines"
+   - fashion → "elegant fabric flow with natural lighting"
+   - food → "appetizing close-up with warm ambient light"
+   - automotive → "dynamic reveal with dramatic shadows"
+   - home → "cozy lifestyle pan with inviting warmth"
+
+4. ENVIRONMENT: Add only if background is simple (e.g., "marble surface", "clean studio")
+
+5. LIGHTING: Choose based on image analysis: "soft studio lighting", "natural light", "dramatic lighting"
+
+6. DURATION: Always use 5s for products (optimal quality)
+
+7. NEGATIVE PROMPTS: Always end with full negative prompt list
+
+VALIDATION RULES:
+- Keep total prompt under 75 characters (excluding negative prompts)
+- Never combine conflicting movements
+- Always include motion speed modifier (smooth, gentle, deliberate)
+- Avoid: fast, rapid, sudden (cause jitter)
+
+Output ONLY the final prompt string. Example:
+crystal perfume bottle, smooth arc-right with gradual pullback, marble surface, soft studio lighting --length 5s --no text watermark blurry distorted duplicate mutation deformed low quality artifacts grain pixelated`,
     }
 
     await logStep(jobId, "PROMPTS_GENERATED", prompts)
@@ -524,36 +668,11 @@ export async function POST(request: NextRequest) {
         if (runwayResult[0].status === "fulfilled") {
           await logStep(jobId, "RUNWAY_REQUEST_SUCCESS", { note: "Runway video generation completed" })
         } else {
-          const errorMessage = runwayResult[0].reason?.message || runwayResult[0].reason || "Unknown error"
+          // Error is already handled in createRunwayVideo with user-friendly messages
           await logStep(jobId, "RUNWAY_REQUEST_ERROR", { 
-            error: errorMessage,
-            errorType: runwayResult[0].reason?.constructor?.name 
+            error: runwayResult[0].reason?.message || "Unknown error",
+            note: "User-friendly error already set in createRunwayVideo function"
           })
-          
-          // Check if it's an aspect ratio error and provide user-friendly message
-          if (errorMessage.includes("aspect ratio") || errorMessage.includes("width / height ratio")) {
-            await supabase
-              .from("jobs")
-              .update({ 
-                promo_video_url: "failed:aspect_ratio",
-                promo_video_error: "Your image dimensions aren't compatible with our video generator. Please try uploading an image that's more square-shaped (not too wide or tall) for best results with promotional videos."
-              })
-              .eq("id", jobId)
-            
-            await logStep(jobId, "RUNWAY_USER_FRIENDLY_ERROR", {
-              userMessage: "Image aspect ratio incompatible - user-friendly error set",
-              originalError: errorMessage
-            })
-          } else {
-            // Generic error fallback
-            await supabase
-              .from("jobs")
-              .update({ 
-                promo_video_url: "failed:generation_error",
-                promo_video_error: "We encountered an issue generating your promotional video. Please try again, or contact support if the problem persists."
-              })
-              .eq("id", jobId)
-          }
         }
       } else {
         await logStep(jobId, "FREE_USER_SKIP_VIDEOS", { note: "Free user - skipping video generation, text content only" })
@@ -583,19 +702,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, results })
     } catch (openaiError) {
       console.error("OpenAI API Error:", openaiError)
+      const errorMessage = openaiError instanceof Error ? openaiError.message : String(openaiError)
+      const errorStack = openaiError instanceof Error ? openaiError.stack : undefined
+      
       await logStep(jobId, "OPENAI_ERROR", {
-        error: openaiError.message,
-        stack: openaiError.stack,
+        error: errorMessage,
+        stack: errorStack,
       })
-      throw new Error(`OpenAI API failed: ${openaiError.message}`)
+      throw new Error(`OpenAI API failed: ${errorMessage}`)
     }
   } catch (error) {
     console.error("Error processing job:", error)
+    
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
 
     if (jobId) {
       await logStep(jobId, "PROCESS_ERROR", {
-        error: error.message,
-        stack: error.stack,
+        error: errorMessage,
+        stack: errorStack,
       })
     }
 
@@ -614,7 +739,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: "Failed to process job",
-        details: error.message,
+        details: errorMessage,
       },
       { status: 500 },
     )
