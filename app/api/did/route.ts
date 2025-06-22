@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { DIDService } from "@/lib/d-id-service-fixed"
+import { getPresenterConfigForTier } from "@/lib/presenter-config"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -31,21 +32,8 @@ function getBaseUrl(): string {
   return "http://localhost:3000"
 }
 
-// Voice configuration based on brand style
-function getVoiceConfig(brandStyle: string) {
-  const voiceConfigs = {
-    professional: { voice: "en-US-AriaNeural", style: "Friendly" },
-    elegant: { voice: "en-US-AriaNeural", style: "Hopeful" },
-    bold: { voice: "en-US-JennyNeural", style: "Excited" },
-    playful: { voice: "en-US-JennyNeural", style: "Cheerful" },
-    luxury: { voice: "en-US-AriaNeural", style: "Hopeful" },
-    minimal: { voice: "en-US-BrianNeural", style: "Friendly" },
-    casual: { voice: "en-US-JennyNeural", style: "Cheerful" },
-    witty: { voice: "en-US-JennyNeural", style: "Excited" },
-  }
-
-  return voiceConfigs[brandStyle.toLowerCase()] || { voice: "en-US-JennyNeural", style: "Cheerful" }
-}
+// Legacy function - now using presenter-config.ts system
+// Kept for reference but functionality moved to tier-based presenter configuration
 
 export async function POST(request: NextRequest) {
   let jobId: string | null = null
@@ -86,18 +74,26 @@ export async function POST(request: NextRequest) {
       script_length: job.openai_avatar_script.length,
     })
 
-    // Get voice configuration based on brand style
-    const voiceConfig = getVoiceConfig(job.brand_style)
-    await logStep(jobId, "VOICE_SELECTED", { ...voiceConfig, brand_style: job.brand_style })
+    // Get presenter configuration based on brand style and current D-ID plan tier
+    const presenterSetup = getPresenterConfigForTier(job.brand_style)
+    const { config: presenterConfig, useDefaultPresenter, tierInfo } = presenterSetup
+    
+    await logStep(jobId, "PRESENTER_SELECTED", { 
+      ...presenterConfig, 
+      brand_style: job.brand_style, 
+      useDefaultPresenter,
+      didPlanTier: tierInfo.currentTier,
+      supportsCustomPresenters: tierInfo.supportsCustomPresenters
+    })
 
     const baseUrl = getBaseUrl()
 
     // Primary attempt with full configuration (no webhook for sustainable polling)
     try {
-      const didResponse = await didService.createTalkFromScript(job.image_url, job.openai_avatar_script, {
-        voice: voiceConfig.voice as any,
-        voiceStyle: voiceConfig.style as any,
-        useDefaultPresenter: true, // Use default presenter to avoid face detection issues
+      const didOptions: any = {
+        voice: presenterConfig.voice as any,
+        voiceStyle: presenterConfig.style as any,
+        useDefaultPresenter,
         expressions: [
           {
             start_frame: 0,
@@ -105,7 +101,14 @@ export async function POST(request: NextRequest) {
             intensity: 0.8,
           },
         ],
-      })
+      }
+
+      // Only add presenter ID if we have premium access and a specific presenter
+      if (!useDefaultPresenter && presenterConfig.presenter) {
+        didOptions.presenter = presenterConfig.presenter
+      }
+
+      const didResponse = await didService.createTalkFromScript(job.image_url, job.openai_avatar_script, didOptions)
 
       await logStep(jobId, "TALK_CREATED", {
         talkId: didResponse.id,
