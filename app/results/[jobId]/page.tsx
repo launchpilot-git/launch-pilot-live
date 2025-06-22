@@ -355,30 +355,13 @@ export default function ResultsPage() {
                       />
                     )}
                     {isPro ? (
-                      // Check if script is ready for editing
-                      jobData.did_video_url === "script_ready" && jobData.openai_avatar_script ? (
+                      // First check if script is ready for editing
+                      jobData.did_video_url === "script_ready" ? (
                         <AvatarScriptEditor
-                          initialScript={jobData.openai_avatar_script}
+                          initialScript={jobData.openai_avatar_script || ""}
                           jobId={jobId}
                           onVideoGenerated={handleVideoUpdate}
                         />
-                      ) : jobData.did_video_url && !jobData.did_video_url.startsWith('pending:') && !jobData.did_video_url.startsWith('failed:') && jobData.did_video_url !== "script_ready" && isAvatarVideoReady ? (
-                        <div className="max-w-md mx-auto space-y-4">
-                          <CustomVideoPlayer 
-                            src={jobData.did_video_url}
-                            aspectRatio="square"
-                            className="shadow-lg"
-                            jobId={jobId}
-                            onReady={() => setIsAvatarVideoReady(true)}
-                          />
-                          <Button 
-                            onClick={() => downloadVideo(jobData.did_video_url!, `${jobData.business_name}-avatar-video.mp4`)}
-                            className="w-full bg-[#ffde00] text-[#240029] hover:bg-[#eab72c]"
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Download Avatar Video
-                          </Button>
-                        </div>
                       ) : jobData.did_video_url && jobData.did_video_url.startsWith('failed:') ? (
                         <div className="aspect-square max-w-md mx-auto bg-red-50 rounded-lg border-2 border-red-200 flex items-center justify-center">
                           <div className="text-center p-6">
@@ -398,7 +381,7 @@ export default function ResultsPage() {
                             </Button>
                           </div>
                         </div>
-                      ) : (
+                      ) : jobData.did_video_url && jobData.did_video_url.startsWith('pending:') ? (
                         <div className="aspect-square max-w-md mx-auto bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
                           <div className="text-center p-6">
                             <div className="mb-4">
@@ -411,6 +394,44 @@ export default function ResultsPage() {
                             <p className="text-sm text-gray-600 mb-1">This usually takes 1-3 minutes</p>
                             <p className="text-xs text-gray-500">Your AI presenter is being created...</p>
                             <VideoStatusPoller jobId={jobId} onUpdate={handleVideoUpdate} />
+                          </div>
+                        </div>
+                      ) : jobData.did_video_url && !jobData.did_video_url.startsWith('pending:') && !jobData.did_video_url.startsWith('failed:') && jobData.did_video_url !== "script_ready" && isAvatarVideoReady ? (
+                        <div className="max-w-md mx-auto space-y-4">
+                          <CustomVideoPlayer 
+                            src={jobData.did_video_url}
+                            aspectRatio="square"
+                            className="shadow-lg"
+                            jobId={jobId}
+                            onReady={() => setIsAvatarVideoReady(true)}
+                          />
+                          <Button 
+                            onClick={() => downloadVideo(jobData.did_video_url!, `${jobData.business_name}-avatar-video.mp4`)}
+                            className="w-full bg-[#ffde00] text-[#240029] hover:bg-[#eab72c]"
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download Avatar Video
+                          </Button>
+                        </div>
+                      ) : jobData.did_video_url && !jobData.did_video_url.startsWith('pending:') && !jobData.did_video_url.startsWith('failed:') && jobData.did_video_url !== "script_ready" ? (
+                        // Video URL exists but not ready yet, show loading
+                        <div className="aspect-square max-w-md mx-auto bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
+                          <div className="text-center p-6">
+                            <div className="mb-4">
+                              <div className="relative inline-flex">
+                                <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200"></div>
+                                <div className="animate-spin rounded-full h-12 w-12 border-4 border-t-[#ffde00] absolute inset-0"></div>
+                              </div>
+                            </div>
+                            <h4 className="text-lg font-medium text-gray-900 mb-2">Loading Avatar Video</h4>
+                            <p className="text-sm text-gray-600">Preparing your video...</p>
+                          </div>
+                        </div>
+                      ) : (
+                        // No video URL at all - shouldn't happen for Pro users
+                        <div className="aspect-square max-w-md mx-auto bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
+                          <div className="text-center p-6">
+                            <p className="text-sm text-gray-600">No avatar video available</p>
                           </div>
                         </div>
                       )
