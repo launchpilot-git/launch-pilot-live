@@ -10,6 +10,7 @@ interface CustomVideoPlayerProps {
   aspectRatio?: 'video' | 'square';
   jobId?: string; // Optional job ID for D-ID URL refresh
   onReady?: () => void; // Callback when video is ready to play
+  onUrlRefreshed?: () => void; // Callback when video URL is refreshed
 }
 
 export default function CustomVideoPlayer({ 
@@ -18,7 +19,8 @@ export default function CustomVideoPlayer({
   className = '', 
   aspectRatio = 'video',
   jobId,
-  onReady
+  onReady,
+  onUrlRefreshed
 }: CustomVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -29,6 +31,8 @@ export default function CustomVideoPlayer({
   const [canPlay, setCanPlay] = useState(false);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [urlWasRefreshed, setUrlWasRefreshed] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,6 +79,29 @@ export default function CustomVideoPlayer({
       return () => clearTimeout(timeoutId);
     }
   }, [isLoading, error, canPlay]);
+
+  // Check if video URL was refreshed by monitoring fetch response
+  useEffect(() => {
+    if (shouldUseProxy(src) && jobId) {
+      // Pre-flight check to see if URL might be expired
+      fetch(videoSrc, { method: 'HEAD' })
+        .then(response => {
+          // Check if the video proxy refreshed the URL
+          const wasRefreshed = response.headers.get('X-Video-Refreshed') === 'true';
+          if (wasRefreshed && !urlWasRefreshed) {
+            console.log('[CustomVideoPlayer] Video URL was refreshed by proxy');
+            setUrlWasRefreshed(true);
+            // Notify parent to refresh job data
+            if (onUrlRefreshed) {
+              onUrlRefreshed();
+            }
+          }
+        })
+        .catch(err => {
+          console.log('[CustomVideoPlayer] Pre-flight check failed:', err);
+        });
+    }
+  }, [src, videoSrc, jobId, urlWasRefreshed, onUrlRefreshed]);
 
   // Extract thumbnail from video with better error handling
   useEffect(() => {
@@ -192,8 +219,28 @@ export default function CustomVideoPlayer({
       message: error?.message,
       src: videoSrc,
       networkState: video.networkState,
-      readyState: video.readyState
+      readyState: video.readyState,
+      retryCount: retryCount
     });
+    
+    // For network errors with D-ID videos, attempt one retry
+    // This handles cases where the URL might be expired
+    if (error?.code === 2 && shouldUseProxy(src) && retryCount < 1) {
+      console.log('[CustomVideoPlayer] Network error detected, attempting retry...');
+      setRetryCount(retryCount + 1);
+      setError(null);
+      setIsLoading(true);
+      
+      // Force reload the video element with a cache-busting parameter
+      setTimeout(() => {
+        if (videoRef.current) {
+          const newSrc = videoSrc + (videoSrc.includes('?') ? '&' : '?') + '_retry=' + Date.now();
+          videoRef.current.src = newSrc;
+          videoRef.current.load();
+        }
+      }, 1000);
+      return;
+    }
     
     let errorMessage = 'Failed to load video';
     if (error) {
@@ -283,9 +330,14 @@ export default function CustomVideoPlayer({
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="text-center">
             <div className="w-8 h-8 border-2 border-[#ffde00] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-            <p className="text-white text-sm font-medium">Loading video...</p>
+            <p className="text-white text-sm font-medium">
+              {retryCount > 0 ? 'Refreshing video...' : 'Loading video...'}
+            </p>
             {thumbnail && (
               <p className="text-white/70 text-xs mt-1">Preparing playback</p>
+            )}
+            {urlWasRefreshed && (
+              <p className="text-white/70 text-xs mt-1">Getting latest version</p>
             )}
           </div>
         </div>
