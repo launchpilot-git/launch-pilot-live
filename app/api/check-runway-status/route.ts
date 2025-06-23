@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     // Get the current job status
     const { data: job, error } = await supabase
       .from("jobs")
-      .select("promo_video_url, updated_at")
+      .select("promo_video_url, created_at")
       .eq("id", jobId)
       .single()
     
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       jobId,
       status: isComplete ? 'complete' : 'pending',
       promo_video_url: job.promo_video_url,
-      updated_at: job.updated_at
+      created_at: job.created_at
     })
   } catch (error) {
     console.error("Error checking Runway status:", error)
