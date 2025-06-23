@@ -47,6 +47,9 @@ export default function ResultsPage() {
   const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [showPromoModal, setShowPromoModal] = useState(false)
   const [isAvatarVideoReady, setIsAvatarVideoReady] = useState(false)
+  const [promoVideoStatus, setPromoVideoStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [lastPromoVideoUrl, setLastPromoVideoUrl] = useState<string | null>(null)
+  const [pollingStatus, setPollingStatus] = useState<{ pollCount: number; lastCheck: string; isPolling: boolean } | null>(null)
 
   const jobId = params.jobId as string
 
@@ -84,6 +87,29 @@ export default function ResultsPage() {
       fetchJobData()
     }
   }, [jobId, user])
+
+  // Track promo video status changes
+  useEffect(() => {
+    if (!jobData?.promo_video_url) {
+      setPromoVideoStatus('loading')
+      return
+    }
+
+    const url = jobData.promo_video_url
+    
+    // Check if status changed
+    if (url !== lastPromoVideoUrl) {
+      setLastPromoVideoUrl(url)
+      
+      if (url.startsWith('pending:')) {
+        setPromoVideoStatus('loading')
+      } else if (url.startsWith('failed:')) {
+        setPromoVideoStatus('error')
+      } else {
+        setPromoVideoStatus('ready')
+      }
+    }
+  }, [jobData?.promo_video_url, lastPromoVideoUrl])
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -473,12 +499,13 @@ export default function ResultsPage() {
                   </div>
                   <div className="space-y-4">
                     {isPro ? (
-                      jobData.promo_video_url && !jobData.promo_video_url.startsWith('pending:') && !jobData.promo_video_url.startsWith('failed:') ? (
+                      promoVideoStatus === 'ready' && jobData.promo_video_url ? (
                         <div className="space-y-4">
                           <CustomVideoPlayer 
                             src={jobData.promo_video_url}
                             aspectRatio="video"
                             className="shadow-lg"
+                            onReady={() => console.log('[ResultsPage] Promo video player ready')}
                           />
                           <Button 
                             onClick={() => downloadVideo(jobData.promo_video_url!, `${jobData.business_name}-promo-video.mp4`)}
@@ -488,24 +515,35 @@ export default function ResultsPage() {
                             Download Promo Video
                           </Button>
                         </div>
-                      ) : jobData.promo_video_url && jobData.promo_video_url.startsWith('failed:') ? (
+                      ) : promoVideoStatus === 'error' ? (
                         <div className="aspect-video bg-red-50 rounded-lg border-2 border-red-200 flex items-center justify-center">
                           <div className="text-center p-6 max-w-md">
                             <div className="mb-4">
                               <X className="h-12 w-12 text-red-500 mx-auto" />
                             </div>
-                            <h4 className="text-lg font-medium text-red-900 mb-2">Video Generation Failed</h4>
-                            <p className="text-sm text-red-700 mb-3">
-                              {jobData.promo_video_error || "We encountered an issue generating your promotional video. Please try again."}
+                            <h4 className="text-lg font-medium text-red-900 mb-2">
+                              {jobData.promo_video_error?.includes('timeout') ? 'Generation Timeout' : 'Video Generation Failed'}
+                            </h4>
+                            <p className="text-sm text-red-700 mb-4">
+                              {jobData.promo_video_error || "We encountered an issue generating your promotional video."}
                             </p>
-                            <Link href="/generate">
+                            <div className="space-y-2">
                               <Button 
+                                onClick={handleVideoUpdate}
                                 variant="outline"
-                                className="border-red-300 text-red-700 hover:bg-red-50"
+                                className="w-full border-red-300 text-red-700 hover:bg-red-50"
                               >
-                                Upload New Image
+                                Refresh Status
                               </Button>
-                            </Link>
+                              <Link href="/generate" className="block">
+                                <Button 
+                                  variant="outline"
+                                  className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
+                                >
+                                  Upload New Image
+                                </Button>
+                              </Link>
+                            </div>
                           </div>
                         </div>
                       ) : (
@@ -519,8 +557,40 @@ export default function ResultsPage() {
                             </div>
                             <h4 className="text-lg font-medium text-gray-900 mb-2">Processing Promo Video</h4>
                             <p className="text-sm text-gray-600 mb-1">This usually takes 2-5 minutes</p>
-                            <p className="text-xs text-gray-500">Creating cinematic product showcase...</p>
-                            <VideoStatusPoller jobId={jobId} onUpdate={handleVideoUpdate} />
+                            <p className="text-xs text-gray-500 mb-3">Creating cinematic product showcase...</p>
+                            <VideoStatusPoller 
+                              jobId={jobId} 
+                              onUpdate={handleVideoUpdate}
+                              onStatusChange={(status) => {
+                                console.log('[ResultsPage] Video status changed:', status)
+                                setPollingStatus(status)
+                              }}
+                            />
+                            {pollingStatus && (
+                              <div className="mt-3 space-y-1">
+                                <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                                  {pollingStatus.isPolling ? (
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                                  ) : (
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                                  )}
+                                  <span>Check #{pollingStatus.pollCount}</span>
+                                  <span>•</span>
+                                  <span>Last: {pollingStatus.lastCheck}</span>
+                                </div>
+                              </div>
+                            )}
+                            <Button
+                              onClick={handleVideoUpdate}
+                              variant="outline"
+                              size="sm"
+                              className="mt-2"
+                            >
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                              Refresh Status
+                            </Button>
                           </div>
                         </div>
                       )

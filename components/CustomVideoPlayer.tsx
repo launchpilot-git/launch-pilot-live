@@ -76,35 +76,70 @@ export default function CustomVideoPlayer({
     }
   }, [isLoading, error, canPlay]);
 
-  // Extract thumbnail from video
+  // Extract thumbnail from video with better error handling
   useEffect(() => {
-    if (src && !poster) {
+    if (src && !poster && !thumbnail) {
+      let thumbnailExtracted = false;
       const video = document.createElement('video');
       video.crossOrigin = 'anonymous';
-      video.muted = true; // Ensure it can autoplay for thumbnail generation
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'metadata';
       
-      video.onloadeddata = () => {
-        // Wait a bit for the frame to be ready
-        setTimeout(() => {
+      const extractThumbnail = () => {
+        if (thumbnailExtracted || !video.videoWidth) return;
+        
+        try {
           const canvas = document.createElement('canvas');
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
           
           const ctx = canvas.getContext('2d');
-          if (ctx && video.videoWidth > 0) {
+          if (ctx) {
             ctx.drawImage(video, 0, 0);
-            setThumbnail(canvas.toDataURL('image/jpeg', 0.8));
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            setThumbnail(dataUrl);
+            thumbnailExtracted = true;
+            console.log('[CustomVideoPlayer] Thumbnail extracted successfully');
           }
-        }, 100);
+        } catch (err) {
+          console.error('[CustomVideoPlayer] Failed to extract thumbnail:', err);
+        }
       };
       
-      video.oncanplay = () => {
-        video.currentTime = 0.5; // Get frame at 0.5 seconds for better thumbnail
+      // Try multiple events to ensure we get a thumbnail
+      video.onloadeddata = () => {
+        console.log('[CustomVideoPlayer] Video loaded data, attempting thumbnail extraction');
+        extractThumbnail();
       };
       
-      video.src = videoSrc; // Use the proxied source for thumbnail generation too
+      video.onseeked = () => {
+        console.log('[CustomVideoPlayer] Video seeked, attempting thumbnail extraction');
+        extractThumbnail();
+      };
+      
+      video.oncanplaythrough = () => {
+        // Try to seek to get a better frame
+        if (!thumbnailExtracted && video.duration > 0) {
+          video.currentTime = Math.min(0.5, video.duration * 0.1);
+        }
+      };
+      
+      video.onerror = (e) => {
+        console.error('[CustomVideoPlayer] Thumbnail video error:', e);
+      };
+      
+      // Set source and load
+      video.src = videoSrc;
+      video.load();
+      
+      // Cleanup
+      return () => {
+        video.src = '';
+        video.load();
+      };
     }
-  }, [src, poster, videoSrc]);
+  }, [src, poster, videoSrc, thumbnail]);
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -245,10 +280,13 @@ export default function CustomVideoPlayer({
 
       {/* Loading State */}
       {isLoading && !error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="text-center">
             <div className="w-8 h-8 border-2 border-[#ffde00] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-            <p className="text-white text-sm">Loading video...</p>
+            <p className="text-white text-sm font-medium">Loading video...</p>
+            {thumbnail && (
+              <p className="text-white/70 text-xs mt-1">Preparing playback</p>
+            )}
           </div>
         </div>
       )}

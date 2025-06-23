@@ -296,7 +296,7 @@ function getRunwayUserFriendlyError(error: any): { message: string; canRetry: bo
   // Timeout issues
   if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
     return {
-      message: "Video generation is taking longer than expected. Please try again in a few minutes.",
+      message: "Video generation timeout - it may still complete. Please refresh in a few minutes.",
       canRetry: true
     }
   }
@@ -393,7 +393,13 @@ async function createRunwayVideo(jobId: string, imageUrl: string, script: string
     } else if (task.status === "FAILED") {
       throw new Error(`${task.failureReason || "Video generation failed"}`)
     } else {
-      throw new Error("Video generation is taking longer than expected")
+      // Timeout - but video might still be processing
+      await logStep(jobId, "RUNWAY_TIMEOUT", { 
+        finalStatus: task.status,
+        attempts: attempts,
+        message: "Video is still processing, please check back in a few minutes"
+      })
+      throw new Error("Video generation timeout - it may still complete. Please refresh in a few minutes.")
     }
   } catch (error) {
     await logStep(jobId, "RUNWAY_REQUEST_EXCEPTION", {

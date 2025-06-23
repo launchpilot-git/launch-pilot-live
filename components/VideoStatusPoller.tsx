@@ -6,24 +6,38 @@ import { useRouter } from 'next/navigation';
 interface VideoStatusPollerProps {
   jobId: string;
   onUpdate?: () => void; // Callback for parent to refresh data
+  onStatusChange?: (status: { pollCount: number; lastCheck: string; isPolling: boolean }) => void;
 }
 
-export default function VideoStatusPoller({ jobId, onUpdate }: VideoStatusPollerProps) {
+export default function VideoStatusPoller({ jobId, onUpdate, onStatusChange }: VideoStatusPollerProps) {
   const [isPolling, setIsPolling] = useState(false);
   const [lastPollTime, setLastPollTime] = useState<string | null>(null);
   const [pollCount, setPollCount] = useState(0);
   const [status, setStatus] = useState<string | null>(null);
   const router = useRouter();
 
-  // Poll for video updates every 10 seconds
+  // Update status callback when state changes
+  useEffect(() => {
+    if (onStatusChange) {
+      onStatusChange({
+        pollCount,
+        lastCheck: lastPollTime || 'Never',
+        isPolling
+      });
+    }
+  }, [pollCount, lastPollTime, isPolling, onStatusChange]);
+
+  // Poll for video updates with exponential backoff
   useEffect(() => {
     // Only poll if we have a job ID
     if (!jobId) return;
 
-    const pollInterval = 10000; // 10 seconds
-    const maxPolls = 30; // Stop after 5 minutes (30 * 10 seconds)
+    const basePollInterval = 5000; // Start with 5 seconds
+    const maxPollInterval = 30000; // Max 30 seconds
+    const maxPolls = 60; // Stop after ~10 minutes
     let timeoutId: NodeJS.Timeout;
     let currentPollCount = 0;
+    let currentInterval = basePollInterval;
 
     async function pollForUpdates() {
       try {
@@ -93,10 +107,13 @@ export default function VideoStatusPoller({ jobId, onUpdate }: VideoStatusPoller
         
         // Continue polling if we haven't hit the max
         if (currentPollCount < maxPolls) {
-          console.log(`[VideoStatusPoller] Continuing to poll...`);
-          timeoutId = setTimeout(pollForUpdates, pollInterval);
+          // Exponential backoff: increase interval up to max
+          currentInterval = Math.min(currentInterval * 1.5, maxPollInterval);
+          console.log(`[VideoStatusPoller] Continuing to poll in ${currentInterval}ms...`);
+          timeoutId = setTimeout(pollForUpdates, currentInterval);
         } else {
           console.log(`[VideoStatusPoller] Max polls reached, stopping...`);
+          setStatus('timeout');
           if (onUpdate) {
             onUpdate(); // Final refresh even if we hit max polls
           }
@@ -106,7 +123,8 @@ export default function VideoStatusPoller({ jobId, onUpdate }: VideoStatusPoller
         setStatus('error');
         // Retry after error unless we've hit max polls
         if (currentPollCount < maxPolls) {
-          timeoutId = setTimeout(pollForUpdates, pollInterval * 2); // Wait longer after error
+          // Use current interval for error retry (already has backoff)
+          timeoutId = setTimeout(pollForUpdates, currentInterval);
         }
       } finally {
         setIsPolling(false);
