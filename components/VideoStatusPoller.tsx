@@ -6,26 +6,15 @@ import { useRouter } from 'next/navigation';
 interface VideoStatusPollerProps {
   jobId: string;
   onUpdate?: () => void; // Callback for parent to refresh data
-  onStatusChange?: (status: { pollCount: number; lastCheck: string; isPolling: boolean }) => void;
 }
 
-export default function VideoStatusPoller({ jobId, onUpdate, onStatusChange }: VideoStatusPollerProps) {
+export default function VideoStatusPoller({ jobId, onUpdate }: VideoStatusPollerProps) {
   const [isPolling, setIsPolling] = useState(false);
   const [lastPollTime, setLastPollTime] = useState<string | null>(null);
   const [pollCount, setPollCount] = useState(0);
   const [status, setStatus] = useState<string | null>(null);
   const router = useRouter();
 
-  // Update status callback when state changes
-  useEffect(() => {
-    if (onStatusChange) {
-      onStatusChange({
-        pollCount,
-        lastCheck: lastPollTime || 'Never',
-        isPolling
-      });
-    }
-  }, [pollCount, lastPollTime, isPolling, onStatusChange]);
 
   // Poll for video updates with exponential backoff
   useEffect(() => {
