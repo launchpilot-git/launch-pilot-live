@@ -61,9 +61,12 @@ export default function VideoStatusPoller({ jobId, onUpdate }: VideoStatusPoller
           console.log(`[VideoStatusPoller] D-ID poll response:`, data);
           
           // Check if this specific job was updated or failed
-          const jobWasUpdated = data.results?.some((result: any) => 
-            result.jobId === jobId && (result.status === 'updated' || result.status === 'failed')
-          );
+          const thisJobResult = data.results?.find((result: any) => result.jobId === jobId);
+          const jobWasUpdated = thisJobResult && (thisJobResult.status === 'updated' || thisJobResult.status === 'failed');
+          
+          if (thisJobResult) {
+            console.log(`[VideoStatusPoller] Found result for job ${jobId}:`, thisJobResult);
+          }
           
           if (jobWasUpdated) {
             console.log(`[VideoStatusPoller] D-ID video for job ${jobId} was updated/failed, triggering refresh...`);
@@ -73,6 +76,18 @@ export default function VideoStatusPoller({ jobId, onUpdate }: VideoStatusPoller
               router.refresh();
             }
             return; // Stop polling after update
+          }
+          
+          // Also check if any D-ID videos were completed (backup check)
+          const anyDIDCompleted = data.updated > 0 || data.errors > 0;
+          if (anyDIDCompleted) {
+            console.log(`[VideoStatusPoller] D-ID videos were completed globally (${data.updated} updated, ${data.errors} errors), triggering refresh as fallback...`);
+            if (onUpdate) {
+              onUpdate();
+            } else {
+              router.refresh();
+            }
+            // Don't return here - let it continue polling in case this wasn't our job
           }
         }
         
