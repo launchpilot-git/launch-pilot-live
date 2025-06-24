@@ -46,7 +46,6 @@ export default function ResultsPage() {
   const [error, setError] = useState<string | null>(null)
   const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [showPromoModal, setShowPromoModal] = useState(false)
-  const [isAvatarVideoReady, setIsAvatarVideoReady] = useState(false)
 
   const jobId = params.jobId as string
 
@@ -110,8 +109,6 @@ export default function ResultsPage() {
 
       if (data.user_id === user.id) {
         setJobData(data)
-        // Reset video ready state when job data changes
-        setIsAvatarVideoReady(false)
         console.log('[ResultsPage] Job data refreshed successfully')
       }
     } catch (err) {
@@ -348,18 +345,6 @@ export default function ResultsPage() {
                     <h3 className="text-lg font-medium">Avatar Video</h3>
                   </div>
                   <div className="max-w-2xl mx-auto space-y-4">
-                    {/* Hidden video element to preload and check if video is ready */}
-                    {isPro && jobData.did_video_url && !jobData.did_video_url.startsWith('pending:') && !jobData.did_video_url.startsWith('failed:') && jobData.did_video_url !== "script_ready" && !isAvatarVideoReady && (
-                      <video
-                        src={jobData.did_video_url.includes('d-id.com') || jobData.did_video_url.includes('amazonaws.com') 
-                          ? `/api/video-proxy?url=${encodeURIComponent(jobData.did_video_url)}&jobId=${jobId}`
-                          : jobData.did_video_url
-                        }
-                        onCanPlay={() => setIsAvatarVideoReady(true)}
-                        style={{ display: 'none' }}
-                        preload="auto"
-                      />
-                    )}
                     {isPro ? (
                       // First check if script is ready for editing
                       jobData.did_video_url === "script_ready" ? (
@@ -403,14 +388,13 @@ export default function ResultsPage() {
                             <VideoStatusPoller jobId={jobId} onUpdate={handleVideoUpdate} />
                           </div>
                         </div>
-                      ) : jobData.did_video_url && !jobData.did_video_url.startsWith('pending:') && !jobData.did_video_url.startsWith('failed:') && jobData.did_video_url !== "script_ready" && isAvatarVideoReady ? (
+                      ) : jobData.did_video_url && !jobData.did_video_url.startsWith('pending:') && !jobData.did_video_url.startsWith('failed:') && jobData.did_video_url !== "script_ready" ? (
                         <div className="max-w-full sm:max-w-md mx-auto space-y-4">
                           <CustomVideoPlayer 
                             src={jobData.did_video_url}
                             aspectRatio="square"
                             className="shadow-lg"
                             jobId={jobId}
-                            onReady={() => setIsAvatarVideoReady(true)}
                           />
                           <Button 
                             onClick={() => downloadVideo(jobData.did_video_url!, `${jobData.business_name}-avatar-video.mp4`)}
@@ -419,20 +403,6 @@ export default function ResultsPage() {
                             <Download className="h-4 w-4 mr-2" />
                             Download Avatar Video
                           </Button>
-                        </div>
-                      ) : jobData.did_video_url && !jobData.did_video_url.startsWith('pending:') && !jobData.did_video_url.startsWith('failed:') && jobData.did_video_url !== "script_ready" ? (
-                        // Video URL exists but not ready yet, show loading
-                        <div className="aspect-square max-w-full sm:max-w-md mx-auto bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
-                          <div className="text-center p-6">
-                            <div className="mb-4">
-                              <div className="relative inline-flex">
-                                <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200"></div>
-                                <div className="animate-spin rounded-full h-12 w-12 border-4 border-t-[#ffde00] absolute inset-0"></div>
-                              </div>
-                            </div>
-                            <h4 className="text-lg font-medium text-gray-900 mb-2">Loading Avatar Video</h4>
-                            <p className="text-sm text-gray-600">Preparing your AI presenter...</p>
-                          </div>
                         </div>
                       ) : (
                         // No video URL at all - shouldn't happen for Pro users
