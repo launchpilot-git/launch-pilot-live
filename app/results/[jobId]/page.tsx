@@ -411,7 +411,6 @@ export default function ResultsPage() {
                             className="shadow-lg"
                             jobId={jobId}
                             onReady={() => setIsAvatarVideoReady(true)}
-                            onUrlRefreshed={handleVideoUpdate}
                           />
                           <Button 
                             onClick={() => downloadVideo(jobData.did_video_url!, `${jobData.business_name}-avatar-video.mp4`)}
@@ -503,7 +502,6 @@ export default function ResultsPage() {
                             aspectRatio="video"
                             className="shadow-lg"
                             onReady={() => console.log('[ResultsPage] Promo video player ready')}
-                            onUrlRefreshed={handleVideoUpdate}
                           />
                           <Button 
                             onClick={() => downloadVideo(jobData.promo_video_url!, `${jobData.business_name}-promo-video.mp4`)}
